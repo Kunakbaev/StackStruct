@@ -12,6 +12,7 @@ int main() {
 
     for (int _ = 0; _ < 5; ++_) {
         error = pushElementToStack(&stack, _ + 1);
+        LOG_DEBUG_VARS(_);
         IF_ERR_RETURN(error);
     }
 
@@ -24,7 +25,8 @@ int main() {
         LOG_DEBUG_VARS(stackPopElem);
     }
 
-    dumpStackLog(&stack);
+    error = dumpStackLog(&stack);
+    IF_ERR_RETURN(error);
 
     return 0;
 }

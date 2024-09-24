@@ -56,41 +56,45 @@ static double sq(double x) {
     return x * x;
 }
 
-Errors reallocateMoreMemoryForStack(Stack* stack) {
+Errors reallocateMoreMemoryForStackIfNeeded(Stack* stack) {
     CHECK_ARGUMENT_FOR_NULL(stack);
     CHECK_ARG_FOR_CONDITION(REALLOC_SIZE_KOEF > MIN_REALLOC_SIZE_KOEF,
                             ERROR_STACK_INCORRECT_CAP_KOEF);
 
-    if (stack->numberOfElements < stack->stackCapacity)
-        return STATUS_OK;
-
+    LOG_DEBUG("fdkalsjklsajkfjaldkjf");
     // we need more elements, so we will make capacity of stack multiplied by some constant
     int newCapacity = roundl(stack->stackCapacity * REALLOC_SIZE_KOEF);
-    if (newCapacity == stack->stackCapacity)
+    if (newCapacity < MIN_STACK_CAPACITY)
+        newCapacity = MIN_STACK_CAPACITY;
+    if (stack->numberOfElements < stack->stackCapacity ||
+            newCapacity == stack->stackCapacity)
         return STATUS_OK; // this happens when array is empty yet, but already has some capacity
     CHECK_ARG_FOR_CONDITION(newCapacity <= MAX_STACK_CAPACITY,
                             ERROR_STACK_NEW_CAPACITY_TOO_BIG);
 
-    LOG_DEBUG_VARS(newCapacity);
+    LOG_DEBUG_VARS(stack->stackCapacity, newCapacity);
     stack->stackCapacity = newCapacity;
     Errors error = myRecalloc((void**)&stack->array, newCapacity * sizeof(StackElement));
     IF_ERR_RETURN(error);
     return STATUS_OK;
 }
 
-Errors reallocateLessMemoryForStack(Stack* stack) {
+Errors reallocateLessMemoryForStackIfNeeded(Stack* stack) {
     CHECK_ARGUMENT_FOR_NULL(stack);
     CHECK_ARG_FOR_CONDITION(REALLOC_SIZE_KOEF > MIN_REALLOC_SIZE_KOEF,
                             ERROR_STACK_INCORRECT_CAP_KOEF);
-
-    if (stack->numberOfElements > stack->stackCapacity)
-        return STATUS_OK;
 
     // there are too many unused elements in stack
     int newCapacity = roundl(stack->stackCapacity / sq(REALLOC_SIZE_KOEF));
     if (newCapacity < MIN_STACK_CAPACITY)
         newCapacity = MIN_STACK_CAPACITY;
 
+    LOG_DEBUG_VARS(stack->numberOfElements, newCapacity, stack->stackCapacity);
+    if (stack->numberOfElements > newCapacity ||
+            newCapacity == stack->stackCapacity)
+        return STATUS_OK;
+
+    LOG_DEBUG("---------------- less memory");
     Errors error = myRecalloc((void**)&stack->array, newCapacity * sizeof(StackElement));
     stack->stackCapacity = newCapacity;
     IF_ERR_RETURN(error);
@@ -102,36 +106,11 @@ Errors reallocateStackArrIfNeeded(Stack* stack) {
     CHECK_ARG_FOR_CONDITION(REALLOC_SIZE_KOEF > MIN_REALLOC_SIZE_KOEF,
                             ERROR_STACK_INCORRECT_CAP_KOEF);
 
-    // FIXME: make 2 separate functions
-    Errors error = STATUS_OK;
-    // we need more elements, so we will make capacity of stack multiplied by some constant
-    if (stack->numberOfElements == stack->stackCapacity) {
-        int newCapacity = roundl(stack->stackCapacity * REALLOC_SIZE_KOEF);
-        if (newCapacity < MIN_STACK_CAPACITY)
-            newCapacity = MIN_STACK_CAPACITY;
-        if (newCapacity == stack->stackCapacity)
-            return STATUS_OK; // this happens when array is empty yet, but already has some capacity
-        CHECK_ARG_FOR_CONDITION(newCapacity <= MAX_STACK_CAPACITY,
-                                ERROR_STACK_NEW_CAPACITY_TOO_BIG);
+    Errors error = reallocateMoreMemoryForStackIfNeeded(stack);
+    IF_ERR_RETURN(error);
 
-        LOG_DEBUG_VARS(newCapacity);
-        stack->stackCapacity = newCapacity;
-        error = myRecalloc((void**)&stack->array, newCapacity * sizeof(StackElement));
-        IF_ERR_RETURN(error);
-        return STATUS_OK;
-    }
-
-    // there are too many unused elements in stack
-    int newCapacity = roundl(stack->stackCapacity / sq(REALLOC_SIZE_KOEF));
-    if (newCapacity < MIN_STACK_CAPACITY)
-        newCapacity = MIN_STACK_CAPACITY;
-    if (stack->numberOfElements <= newCapacity) {
-        if (newCapacity == stack->stackCapacity)
-            return STATUS_OK; // this happens when array is empty yet, but already has some capacity
-        error = myRecalloc((void**)&stack->array, newCapacity * sizeof(StackElement));
-        stack->stackCapacity = newCapacity;
-        IF_ERR_RETURN(error);
-    }
+    error = reallocateLessMemoryForStackIfNeeded(stack);
+    IF_ERR_RETURN(error);
 
     return STATUS_OK;
 }
@@ -141,13 +120,13 @@ Errors pushElementToStack(Stack* stack, const StackElement element) {
     //CHECK_ARGUMENT_FOR_NULL(element);
 
     Errors error = reallocateStackArrIfNeeded(stack);
-    LOG_DEBUG_VARS(stack->stackCapacity, stack->array, stack->numberOfElements);
+    //LOG_DEBUG_VARS(stack->stackCapacity, stack->array, stack->numberOfElements);
     IF_ERR_RETURN(error);
 
     // FIXME: copypaste
     RETURN_IF_INVALID(stack);
 
-    dumpStackLog(stack);
+    // dumpStackLog(stack);
     CHECK_ARG_FOR_CONDITION(stack->numberOfElements + 1 <= stack->stackCapacity,
                             ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
 
