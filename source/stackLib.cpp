@@ -6,9 +6,9 @@
     do {                                                        \
         bool isValid = false;                                   \
         Errors errorTmp = isStackIsValid(stack, &isValid);      \
-        IF_ERR_RETURN(errorTmp);                               \
+        IF_ERR_RETURN(errorTmp);                                \
         if (!isValid)                                           \
-            IF_ERR_RETURN(ERROR_STACK_INVALID_FIELD_VALUES);   \
+            IF_ERR_RETURN(ERROR_STACK_INVALID_FIELD_VALUES);    \
     } while (0)
 
 constexpr const size_t MIN_STACK_CAPACITY    = 8;
@@ -40,7 +40,7 @@ Errors constructStack(Stack* stack, int initialCapacity) {
 }
 
 static Errors myRecalloc(void** ptr, size_t newNumOfBytes) {
-    // CHECK_ARGUMENT_FOR_NULL(ptr);
+    CHECK_ARGUMENT_FOR_NULL(ptr);
 
     // LOG_DEBUG_VARS("Reallocating", newNumOfBytes);
     void* tmpPtr = realloc(*ptr, newNumOfBytes);
@@ -74,7 +74,8 @@ Errors reallocateMoreMemoryForStackIfNeeded(Stack* stack) {
                             ERROR_STACK_NEW_CAPACITY_TOO_BIG);
 
     stack->stackCapacity = newCapacity;
-    Errors error = myRecalloc((void**)&stack->array, newCapacity * sizeof(StackElement));
+    Errors error = myRecalloc((void**)&stack->array,
+                              newCapacity * sizeof(StackElement));
     IF_ERR_RETURN(error);
     return STATUS_OK;
 }
@@ -94,7 +95,8 @@ Errors reallocateLessMemoryForStackIfNeeded(Stack* stack) {
             newCapacity == stack->stackCapacity)
         return STATUS_OK;
 
-    Errors error = myRecalloc((void**)&stack->array, newCapacity * sizeof(StackElement));
+    Errors error = myRecalloc((void**)&stack->array,
+                              newCapacity * sizeof(StackElement));
     stack->stackCapacity = newCapacity;
     IF_ERR_RETURN(error);
     return error;
@@ -174,14 +176,14 @@ Errors dumpStackLog(Stack* stack) {
 
     RETURN_IF_INVALID(stack);
 
-    // LOG_DEBUG("--------------------------------------");
-    // LOG_DEBUG("Stack:");
-    // LOG_DEBUG_VARS(stack->numberOfElements);
-    // LOG_DEBUG_VARS(stack->stackCapacity);
-    // LOG_DEBUG("elements:");
-    // for (size_t elemIndex = 0; elemIndex < stack->numberOfElements; ++elemIndex) {
-    //     LOG_DEBUG_VARS(elemIndex, stack->array[elemIndex]);
-    // }
+    LOG_DEBUG("--------------------------------------");
+    LOG_DEBUG("Stack:");
+    LOG_DEBUG_VARS(stack->numberOfElements);
+    LOG_DEBUG_VARS(stack->stackCapacity);
+    LOG_DEBUG("elements:");
+    for (size_t elemIndex = 0; elemIndex < stack->numberOfElements; ++elemIndex) {
+        LOG_DEBUG_VARS(elemIndex, stack->array[elemIndex]);
+    }
 
     // just in case, maybe too paranoid
     RETURN_IF_INVALID(stack);

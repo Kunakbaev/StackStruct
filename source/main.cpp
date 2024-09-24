@@ -7,6 +7,8 @@ int main() {
 
     Stack stack = {};
     Errors error = STATUS_OK;
+
+    // if stack parametre is void*, then user doesn't know about fields of Stack struct???
     error = constructStack(&stack, 0);
     IF_ERR_RETURN(error);
 
