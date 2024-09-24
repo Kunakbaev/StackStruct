@@ -16,5 +16,6 @@ Errors pushElementToStack(Stack* stack, const StackElement element);
 Errors popElementToStack(Stack* stack, StackElement* element);
 Errors isStackIsValid(Stack* stack, bool* isValid);
 Errors dumpStackLog(Stack* stack);
+Errors destructStack(Stack* stack);
 
 #endif
