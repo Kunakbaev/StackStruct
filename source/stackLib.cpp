@@ -11,12 +11,14 @@
             IF_ERR_RETURN(ERROR_STACK_INVALID_FIELD_VALUES);   \
     } while (0)
 
-const size_t MIN_STACK_CAPACITY    = 8;
-const size_t MAX_STACK_CAPACITY    = 1 << 10;
-const double REALLOC_SIZE_KOEF     = 2.0;
-const double MIN_REALLOC_SIZE_KOEF = 1.5;
+constexpr const size_t MIN_STACK_CAPACITY    = 8;
+constexpr const size_t MAX_STACK_CAPACITY    = 1 << 10;
+constexpr const double REALLOC_SIZE_KOEF     = 2.0;
+constexpr const double MIN_REALLOC_SIZE_KOEF = 1.5;
 
-static_assert(MIN_STACK_CAPACITY > 0);
+static_assert(MIN_STACK_CAPACITY    > 0);
+static_assert(MIN_REALLOC_SIZE_KOEF > 1);
+static_assert(REALLOC_SIZE_KOEF     > MIN_REALLOC_SIZE_KOEF);
 
 Errors constructStack(Stack* stack, int initialCapacity) {
     CHECK_ARGUMENT_FOR_NULL(stack);
@@ -40,7 +42,7 @@ Errors constructStack(Stack* stack, int initialCapacity) {
 static Errors myRecalloc(void** ptr, size_t newNumOfBytes) {
     // CHECK_ARGUMENT_FOR_NULL(ptr);
 
-    LOG_DEBUG_VARS("Reallocating", newNumOfBytes);
+    // LOG_DEBUG_VARS("Reallocating", newNumOfBytes);
     void* tmpPtr = realloc(*ptr, newNumOfBytes);
     CHECK_ARG_FOR_CONDITION(tmpPtr, ERROR_MEMORY_REALLOCATION_ERROR);
     *ptr = tmpPtr;
@@ -61,7 +63,6 @@ Errors reallocateMoreMemoryForStackIfNeeded(Stack* stack) {
     CHECK_ARG_FOR_CONDITION(REALLOC_SIZE_KOEF > MIN_REALLOC_SIZE_KOEF,
                             ERROR_STACK_INCORRECT_CAP_KOEF);
 
-    LOG_DEBUG("fdkalsjklsajkfjaldkjf");
     // we need more elements, so we will make capacity of stack multiplied by some constant
     int newCapacity = roundl(stack->stackCapacity * REALLOC_SIZE_KOEF);
     if (newCapacity < MIN_STACK_CAPACITY)
@@ -72,7 +73,6 @@ Errors reallocateMoreMemoryForStackIfNeeded(Stack* stack) {
     CHECK_ARG_FOR_CONDITION(newCapacity <= MAX_STACK_CAPACITY,
                             ERROR_STACK_NEW_CAPACITY_TOO_BIG);
 
-    LOG_DEBUG_VARS(stack->stackCapacity, newCapacity);
     stack->stackCapacity = newCapacity;
     Errors error = myRecalloc((void**)&stack->array, newCapacity * sizeof(StackElement));
     IF_ERR_RETURN(error);
@@ -89,12 +89,11 @@ Errors reallocateLessMemoryForStackIfNeeded(Stack* stack) {
     if (newCapacity < MIN_STACK_CAPACITY)
         newCapacity = MIN_STACK_CAPACITY;
 
-    LOG_DEBUG_VARS(stack->numberOfElements, newCapacity, stack->stackCapacity);
+    // LOG_DEBUG_VARS(stack->numberOfElements, newCapacity, stack->stackCapacity);
     if (stack->numberOfElements > newCapacity ||
             newCapacity == stack->stackCapacity)
         return STATUS_OK;
 
-    LOG_DEBUG("---------------- less memory");
     Errors error = myRecalloc((void**)&stack->array, newCapacity * sizeof(StackElement));
     stack->stackCapacity = newCapacity;
     IF_ERR_RETURN(error);
@@ -117,10 +116,8 @@ Errors reallocateStackArrIfNeeded(Stack* stack) {
 
 Errors pushElementToStack(Stack* stack, const StackElement element) {
     CHECK_ARGUMENT_FOR_NULL(stack);
-    //CHECK_ARGUMENT_FOR_NULL(element);
 
     Errors error = reallocateStackArrIfNeeded(stack);
-    //LOG_DEBUG_VARS(stack->stackCapacity, stack->array, stack->numberOfElements);
     IF_ERR_RETURN(error);
 
     // FIXME: copypaste
@@ -177,14 +174,14 @@ Errors dumpStackLog(Stack* stack) {
 
     RETURN_IF_INVALID(stack);
 
-    LOG_DEBUG("--------------------------------------");
-    LOG_DEBUG("Stack:");
-    LOG_DEBUG_VARS(stack->numberOfElements);
-    LOG_DEBUG_VARS(stack->stackCapacity);
-    LOG_DEBUG("elements:");
-    for (size_t elemIndex = 0; elemIndex < stack->numberOfElements; ++elemIndex) {
-        LOG_DEBUG_VARS(elemIndex, stack->array[elemIndex]);
-    }
+    // LOG_DEBUG("--------------------------------------");
+    // LOG_DEBUG("Stack:");
+    // LOG_DEBUG_VARS(stack->numberOfElements);
+    // LOG_DEBUG_VARS(stack->stackCapacity);
+    // LOG_DEBUG("elements:");
+    // for (size_t elemIndex = 0; elemIndex < stack->numberOfElements; ++elemIndex) {
+    //     LOG_DEBUG_VARS(elemIndex, stack->array[elemIndex]);
+    // }
 
     // just in case, maybe too paranoid
     RETURN_IF_INVALID(stack);

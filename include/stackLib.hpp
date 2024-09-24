@@ -3,7 +3,7 @@
 
 #include "errorsHandler.hpp"
 
-typedef int StackElement;
+typedef long double StackElement;
 
 struct Stack {
     int numberOfElements;
