@@ -21,6 +21,8 @@ const char* getErrorMessage(Errors error) {
             return "Error: new capacity is bigger than max capacity.\n";
         case ERROR_STACK_INCORRECT_CAP_KOEF:
             return "Error: incorrect capacity change koefficient.\n";
+        case ERROR_STACK_MEMORY_HASH_CHECK_FAILED:
+            return "Error: hashes not equal.\n";
         default:
             return "Unknown error.\n";
     }

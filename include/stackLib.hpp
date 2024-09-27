@@ -1,11 +1,20 @@
 #ifndef STACK_LIB
 #define STACK_LIB
 
+#include <inttypes.h>
+
 #include "errorsHandler.hpp"
+
+// #ifdef HASH_MEMORY_CHECK_DEFINE
+// #define IS_HASH_MEMORY_CHECK_DEFINE
+// #endif
+
+#define IS_HASH_MEMORY_CHECK_DEFINE
 
 typedef long double StackElement;
 
 struct Stack {
+    uint64_t structHash;
     int numberOfElements;
     int stackCapacity;
     StackElement* array;
