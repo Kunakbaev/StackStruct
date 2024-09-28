@@ -18,6 +18,7 @@
 
 // beware strings of Tue a Morse
 std::mt19937_64 rnd(std::chrono::steady_clock::now().time_since_epoch().count());
+
 const uint64_t RAND_NUMBER_FOR_HASHES        = rnd();
 const uint64_t BASE_NUMBER_FOR_HASHES        = rnd() >> 32; // ???
 
@@ -48,13 +49,17 @@ static Errors getHashOfStack(const Stack* stack, uint64_t* stackHash) {
     Errors err = STATUS_OK;
     err = addNumToHash(stackHash, (uint64_t*)&stack->numberOfElements);
     IF_ERR_RETURN(err);
-    addNumToHash(stackHash, (uint64_t*)&stack->stackCapacity);
+    addNumToHash(stackHash,       (uint64_t*)&stack->stackCapacity);
     IF_ERR_RETURN(err);
-    addNumToHash(stackHash, (uint64_t*)&stack->array); // address of a pointer
+    addNumToHash(stackHash,       (uint64_t*)&stack->array); // address of a pointer
     IF_ERR_RETURN(err);
 
-    for (size_t elemInd = 0; elemInd < stack->numberOfElements; ++elemInd) {
-        err = addNumToHash(stackHash, (uint64_t*)&stack->array[elemInd]);
+    // for (size_t elemInd = 0; elemInd < stack->numberOfElements; ++elemInd) {
+    //     err = addNumToHash(stackHash, (uint64_t*)&stack->array[elemInd]);
+    //     IF_ERR_RETURN(err);
+    // }
+    for (size_t byteInd = 0; byteInd < stack->numberOfElements * stack->elementSize; ++byteInd) {
+        err = addNumToHash(stackHash, (uint64_t*)&stack->array[byteInd]);
         IF_ERR_RETURN(err);
     }
 
@@ -71,7 +76,7 @@ static Errors recalculateHashOfStack(Stack* stack) {
     return STATUS_OK;
 }
 
-Errors constructStack(Stack* stack, int initialCapacity) {
+Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
     IF_ARG_NULL_RETURN(stack);
     IF_NOT_COND_RETURN(initialCapacity >= 0, ERROR_INVALID_ARGUMENT);
     IF_NOT_COND_RETURN(initialCapacity < MAX_STACK_CAPACITY,
@@ -80,18 +85,16 @@ Errors constructStack(Stack* stack, int initialCapacity) {
     stack->numberOfElements = 0;
     stack->stackCapacity    = initialCapacity;
     stack->array            = NULL;
-    // LOG_DEBUG_VARS(RAND_NUMBER_FOR_HASHES);
+    stack->elementSize      = stackElemSize;
 
     if (initialCapacity > 0) {
-        stack->array = (StackElement*)calloc(initialCapacity, sizeof(StackElement));
+        stack->array = (uint8_t*)calloc(initialCapacity, sizeof(uint8_t));
         IF_NOT_COND_RETURN(stack->array != NULL,
                            ERROR_MEMORY_ALLOCATION_ERROR);
     }
 
     Errors error = recalculateHashOfStack(stack);
     IF_ERR_RETURN(error);
-
-    // LOG_DEBUG_VARS(stack->structHash);
 
     return STATUS_OK;
 }
@@ -126,13 +129,13 @@ static Errors reallocateMoreMemoryForStackIfNeeded(Stack* stack) {
         newCapacity = MIN_STACK_CAPACITY;
     if (stack->numberOfElements < stack->stackCapacity ||
             newCapacity == stack->stackCapacity)
-        return STATUS_OK; // this happens when array is empty yet, but already has some capacity
+        return STATUS_OK; // this happens when array is still empty, but already has some capacity
     IF_NOT_COND_RETURN(newCapacity <= MAX_STACK_CAPACITY,
                        ERROR_STACK_NEW_CAPACITY_TOO_BIG);
 
     stack->stackCapacity = newCapacity;
     Errors error = myRecalloc((void**)&stack->array,
-                              newCapacity * sizeof(StackElement));
+                              newCapacity * stack->elementSize);
     IF_ERR_RETURN(error);
     return STATUS_OK;
 }
@@ -147,13 +150,12 @@ static Errors reallocateLessMemoryForStackIfNeeded(Stack* stack) {
     if (newCapacity < MIN_STACK_CAPACITY)
         newCapacity = MIN_STACK_CAPACITY;
 
-    // LOG_DEBUG_VARS(stack->numberOfElements, newCapacity, stack->stackCapacity);
     if (stack->numberOfElements > newCapacity ||
             newCapacity == stack->stackCapacity)
         return STATUS_OK;
 
     Errors error = myRecalloc((void**)&stack->array,
-                              newCapacity * sizeof(StackElement));
+                              newCapacity * stack->elementSize);
     stack->stackCapacity = newCapacity;
     IF_ERR_RETURN(error);
     return error;
@@ -167,46 +169,55 @@ static Errors reallocateStackArrIfNeeded(Stack* stack) {
     Errors error = reallocateMoreMemoryForStackIfNeeded(stack);
     IF_ERR_RETURN(error);
 
-    error = reallocateLessMemoryForStackIfNeeded(stack);
+    error        = reallocateLessMemoryForStackIfNeeded(stack);
     IF_ERR_RETURN(error);
 
-    error = recalculateHashOfStack(stack);
+    error        = recalculateHashOfStack(stack);
     IF_ERR_RETURN(error);
 
     return STATUS_OK;
 }
 
-Errors pushElementToStack(Stack* stack, const StackElement element) {
+Errors pushElementToStack(Stack* stack, const void* elementVoidPtr) {
+    uint8_t* element = (uint8_t*)elementVoidPtr;
+    LOG_DEBUG_VARS(element);
+
     IF_ARG_NULL_RETURN(stack);
+    IF_ARG_NULL_RETURN(element);
+    IF_ARG_NULL_RETURN(*element);
+    LOG_DEBUG("ok");
     RETURN_IF_INVALID(stack);
 
     Errors error = reallocateStackArrIfNeeded(stack);
     IF_ERR_RETURN(error);
 
-    //dumpStackLog(stack);
-    // FIXME: copypaste
-    LOG_DEBUG_VARS(stack->structHash);
     RETURN_IF_INVALID(stack);
 
-    //dumpStackLog(stack);
     IF_NOT_COND_RETURN(stack->numberOfElements + 1 <= stack->stackCapacity,
                        ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
 
-    //dumpStackLog(stack);
     // FIXME: copy is bad, maybe make stack of pointers to elements
-    stack->array[stack->numberOfElements] = element;
+    // FIXME: does it work?
+    for (size_t byteInd = 0; byteInd < stack->elementSize; ++byteInd) {
+        LOG_DEBUG_VARS(byteInd, *(element + byteInd));
+        int arrInd = stack->numberOfElements * stack->elementSize + byteInd;
+        stack->array[arrInd] = *(element + byteInd);
+    }
+    LOG_DEBUG("ok");
     ++stack->numberOfElements;
 
     error = recalculateHashOfStack(stack);
     IF_ERR_RETURN(error);
 
-    LOG_DEBUG_VARS(stack->structHash);
     RETURN_IF_INVALID(stack);
 
     return STATUS_OK;
 }
 
-Errors popElementToStack(Stack* stack, StackElement* element) {
+Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
+    uint8_t* element = (uint8_t*)elementVoidPtr;
+    LOG_DEBUG_VARS(element);
+
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(element);
 
@@ -219,7 +230,13 @@ Errors popElementToStack(Stack* stack, StackElement* element) {
 
     IF_NOT_COND_RETURN(stack->numberOfElements >= 1,
                        ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
-    *element = stack->array[stack->numberOfElements - 1];
+    //*element = stack->array[stack->numberOfElements - 1];
+
+    for (size_t byteInd = 0; byteInd < stack->elementSize; ++byteInd) {
+        int arrInd = (stack->numberOfElements - 1) * stack->elementSize + byteInd;
+        LOG_DEBUG_VARS(arrInd, *element, stack->array[arrInd]);
+        *(element + byteInd) = stack->array[arrInd];
+    }
     --stack->numberOfElements;
 
     error = recalculateHashOfStack(stack);
@@ -239,7 +256,6 @@ Errors isStackIsValid(Stack* stack, bool* isValid) {
     *isValid &= stack->numberOfElements >= 0;
     *isValid &= stack->numberOfElements <= stack->stackCapacity;
     *isValid &= stack->array != NULL    || stack->numberOfElements == 0;
-    //*isValid &= stack->array            != NULL;
     if (!(*isValid))
         return STATUS_OK;
 
@@ -270,11 +286,15 @@ Errors dumpStackLog(Stack* stack) {
     LOG_DEBUG_VARS(stack->array);
     LOG_DEBUG("elements:");
     for (size_t elemIndex = 0; elemIndex < stack->numberOfElements; ++elemIndex) {
-        LOG_DEBUG_VARS(elemIndex, stack->array[elemIndex]);
+        size_t arrInd = elemIndex * stack->elementSize;
+        // FIXME: somehow output bytes
+        assert(stack->elementSize == 4);
+        LOG_DEBUG_VARS(elemIndex, (int)stack->array[arrInd]);
     }
+    LOG_DEBUG("--------------------------------------");
 
     // just in case, maybe too paranoid
-    // RETURN_IF_INVALID(stack);
+    RETURN_IF_INVALID(stack);
 
     return STATUS_OK;
 }
@@ -287,6 +307,7 @@ Errors destructStack(Stack* stack) {
     FREE(stack->array);
     stack->numberOfElements = 0;
     stack->stackCapacity    = 0;
+    stack->structHash       = 0;
 
     return STATUS_OK;
 }

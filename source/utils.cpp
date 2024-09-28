@@ -6,7 +6,7 @@
 #define FREE(x)         \
 do {                    \
     free(x);            \
-    x = NULL;           \
-} while(0) // FIXME: copypaste
+    (x) = NULL;         \
+} while(0)
 
 #endif
