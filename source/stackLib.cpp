@@ -143,41 +143,19 @@ static double sq(double x) {
     return x * x;
 }
 
-static Errors reallocateMoreMemoryForStackIfNeeded(Stack* stack) {
+static Errors reallocateMemoryForStackIfNeeded(Stack* stack, int newCapacity) {
     IF_ARG_NULL_RETURN(stack);
-    IF_NOT_COND_RETURN(REALLOC_SIZE_KOEF > MIN_REALLOC_SIZE_KOEF,
+    IF_NOT_COND_RETURN(REALLOC_SIZE_KOEF >= MIN_REALLOC_SIZE_KOEF,
                        ERROR_STACK_INCORRECT_CAP_KOEF);
 
-    // we need more elements, so we will make capacity of stack multiplied by some constant
-    int newCapacity = roundl(stack->stackCapacity * REALLOC_SIZE_KOEF);
     if (newCapacity < MIN_STACK_CAPACITY)
         newCapacity = MIN_STACK_CAPACITY;
-    if (stack->numberOfElements < stack->stackCapacity ||
-            newCapacity == stack->stackCapacity)
-        return STATUS_OK; // this happens when array is still empty, but already has some capacity
+
+    if (newCapacity == stack->stackCapacity)
+        return STATUS_OK;
+
     IF_NOT_COND_RETURN(newCapacity <= MAX_STACK_CAPACITY,
                        ERROR_STACK_NEW_CAPACITY_TOO_BIG);
-
-    stack->stackCapacity = newCapacity;
-    Errors error = myRecalloc((void**)&stack->array,
-                              newCapacity * stack->elementSize);
-    IF_ERR_RETURN(error);
-    return STATUS_OK;
-}
-
-static Errors reallocateLessMemoryForStackIfNeeded(Stack* stack) {
-    IF_ARG_NULL_RETURN(stack);
-    IF_NOT_COND_RETURN(REALLOC_SIZE_KOEF > MIN_REALLOC_SIZE_KOEF,
-                       ERROR_STACK_INCORRECT_CAP_KOEF);
-
-    // there are too many unused elements in stack
-    int newCapacity = roundl(stack->stackCapacity / sq(REALLOC_SIZE_KOEF));
-    if (newCapacity < MIN_STACK_CAPACITY)
-        newCapacity = MIN_STACK_CAPACITY;
-
-    if (stack->numberOfElements > newCapacity ||
-            newCapacity == stack->stackCapacity)
-        return STATUS_OK;
 
     Errors error = myRecalloc((void**)&stack->array,
                               newCapacity * stack->elementSize);
@@ -188,16 +166,25 @@ static Errors reallocateLessMemoryForStackIfNeeded(Stack* stack) {
 
 static Errors reallocateStackArrIfNeeded(Stack* stack) {
     IF_ARG_NULL_RETURN(stack);
-    IF_NOT_COND_RETURN(REALLOC_SIZE_KOEF > MIN_REALLOC_SIZE_KOEF,
+    IF_NOT_COND_RETURN(REALLOC_SIZE_KOEF >= MIN_REALLOC_SIZE_KOEF,
                        ERROR_STACK_INCORRECT_CAP_KOEF);
 
-    Errors error = reallocateMoreMemoryForStackIfNeeded(stack);
-    IF_ERR_RETURN(error);
+    // there are too many unused elements in stack
+    int newCapacityLess = roundl(stack->stackCapacity / sq(REALLOC_SIZE_KOEF));
+    // we need more elements, so we will make capacity of stack multiplied by some constant
+    int newCapacityMore = roundl(stack->stackCapacity * REALLOC_SIZE_KOEF);
 
-    error        = reallocateLessMemoryForStackIfNeeded(stack);
-    IF_ERR_RETURN(error);
+    Errors error = STATUS_OK;
+    if (stack->numberOfElements <  newCapacityLess) {
+        error = reallocateMemoryForStackIfNeeded(stack, newCapacityLess);
+        IF_ERR_RETURN(error);
+    }
+    if (stack->numberOfElements == stack->stackCapacity) {
+        error = reallocateMemoryForStackIfNeeded(stack, newCapacityMore);
+        IF_ERR_RETURN(error);
+    }
 
-    error        = recalculateHashOfStack(stack);
+    error = recalculateHashOfStack(stack);
     IF_ERR_RETURN(error);
 
     return STATUS_OK;
