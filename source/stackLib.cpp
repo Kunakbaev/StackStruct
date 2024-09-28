@@ -7,7 +7,7 @@
 #define RETURN_IF_INVALID(stack)                                \
     do {                                                        \
         bool isValid = false;                                   \
-        Errors errorTmp = isStackIsValid(stack, &isValid);      \
+        Errors errorTmp = isStackValid(stack, &isValid);        \
         IF_ERR_RETURN(errorTmp);                                \
         if (!isValid) {                                         \
             IF_ERR_RETURN(ERROR_STACK_INVALID_FIELD_VALUES);    \
@@ -22,14 +22,21 @@ std::mt19937_64 rnd(std::chrono::steady_clock::now().time_since_epoch().count())
 const uint64_t RAND_NUMBER_FOR_HASHES        = rnd();
 const uint64_t BASE_NUMBER_FOR_HASHES        = rnd() >> 32; // ???
 
+constexpr const size_t MAX_STACK_ELEM_SIZE   = 32;
 constexpr const size_t MIN_STACK_CAPACITY    = 8;
 constexpr const size_t MAX_STACK_CAPACITY    = 1 << 10;
 constexpr const double REALLOC_SIZE_KOEF     = 2.0;
 constexpr const double MIN_REALLOC_SIZE_KOEF = 1.5;
 
+const size_t LOG_BUFFER_SIZE                 = 200;
+char* bufferToOutputStackElems               = "";
+char* buffForByte                            = "";
+
 static_assert(MIN_STACK_CAPACITY    > 0);
 static_assert(MIN_REALLOC_SIZE_KOEF > 1);
 static_assert(REALLOC_SIZE_KOEF     > MIN_REALLOC_SIZE_KOEF);
+
+//  -----------------------------       FUNCTIONS FOR HASHES        ----------------------------------
 
 static Errors addNumToHash(uint64_t* stackHash, const uint64_t* number) {
     IF_ARG_NULL_RETURN(stackHash);
@@ -76,10 +83,16 @@ static Errors recalculateHashOfStack(Stack* stack) {
     return STATUS_OK;
 }
 
+//  -----------------------------       STACK CONSTRUCTOR        ----------------------------------
+
 Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
     IF_ARG_NULL_RETURN(stack);
     IF_NOT_COND_RETURN(initialCapacity >= 0, ERROR_INVALID_ARGUMENT);
-    IF_NOT_COND_RETURN(initialCapacity < MAX_STACK_CAPACITY,
+    IF_NOT_COND_RETURN(stackElemSize   >  0, ERROR_STACK_ELEM_SIZE_TOO_SMALL);
+    LOG_DEBUG_VARS(stackElemSize);
+    IF_NOT_COND_RETURN(stackElemSize   <= MAX_STACK_ELEM_SIZE,
+                       ERROR_STACK_ELEM_SIZE_TOO_BIG);
+    IF_NOT_COND_RETURN(initialCapacity <  MAX_STACK_CAPACITY,
                        ERROR_INVALID_ARGUMENT);
 
     stack->numberOfElements = 0;
@@ -93,11 +106,23 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
                            ERROR_MEMORY_ALLOCATION_ERROR);
     }
 
+    bufferToOutputStackElems = (char*)calloc(LOG_BUFFER_SIZE, sizeof(char));
+    IF_NOT_COND_RETURN(bufferToOutputStackElems != NULL,
+                       ERROR_MEMORY_ALLOCATION_ERROR);
+    buffForByte = (char*)calloc(4, sizeof(char*));
+    IF_NOT_COND_RETURN(buffForByte != NULL,
+                       ERROR_MEMORY_ALLOCATION_ERROR);
+
     Errors error = recalculateHashOfStack(stack);
     IF_ERR_RETURN(error);
 
+    // just in case
+    RETURN_IF_INVALID(stack);
+
     return STATUS_OK;
 }
+
+//  -----------------------------       MEMORY MANAGMENT        ----------------------------------
 
 static Errors myRecalloc(void** ptr, size_t newNumOfBytes) {
     IF_ARG_NULL_RETURN(ptr);
@@ -178,14 +203,15 @@ static Errors reallocateStackArrIfNeeded(Stack* stack) {
     return STATUS_OK;
 }
 
+//  -----------------------------       TWO MAIN FUNCTIONS        ----------------------------------
+
 Errors pushElementToStack(Stack* stack, const void* elementVoidPtr) {
     uint8_t* element = (uint8_t*)elementVoidPtr;
-    LOG_DEBUG_VARS(element);
+    // LOG_DEBUG_VARS(element);
 
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(element);
-    IF_ARG_NULL_RETURN(*element);
-    LOG_DEBUG("ok");
+    //IF_ARG_NULL_RETURN(*element);
     RETURN_IF_INVALID(stack);
 
     Errors error = reallocateStackArrIfNeeded(stack);
@@ -197,13 +223,11 @@ Errors pushElementToStack(Stack* stack, const void* elementVoidPtr) {
                        ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
 
     // FIXME: copy is bad, maybe make stack of pointers to elements
-    // FIXME: does it work?
     for (size_t byteInd = 0; byteInd < stack->elementSize; ++byteInd) {
-        LOG_DEBUG_VARS(byteInd, *(element + byteInd));
+        //LOG_DEBUG_VARS(byteInd, *(element + byteInd));
         int arrInd = stack->numberOfElements * stack->elementSize + byteInd;
         stack->array[arrInd] = *(element + byteInd);
     }
-    LOG_DEBUG("ok");
     ++stack->numberOfElements;
 
     error = recalculateHashOfStack(stack);
@@ -216,7 +240,7 @@ Errors pushElementToStack(Stack* stack, const void* elementVoidPtr) {
 
 Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
     uint8_t* element = (uint8_t*)elementVoidPtr;
-    LOG_DEBUG_VARS(element);
+    // LOG_DEBUG_VARS(element);
 
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(element);
@@ -230,11 +254,10 @@ Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
 
     IF_NOT_COND_RETURN(stack->numberOfElements >= 1,
                        ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
-    //*element = stack->array[stack->numberOfElements - 1];
 
     for (size_t byteInd = 0; byteInd < stack->elementSize; ++byteInd) {
         int arrInd = (stack->numberOfElements - 1) * stack->elementSize + byteInd;
-        LOG_DEBUG_VARS(arrInd, *element, stack->array[arrInd]);
+        //LOG_DEBUG_VARS(arrInd, *element, stack->array[arrInd]);
         *(element + byteInd) = stack->array[arrInd];
     }
     --stack->numberOfElements;
@@ -247,12 +270,16 @@ Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
     return STATUS_OK;
 }
 
-Errors isStackIsValid(Stack* stack, bool* isValid) {
+//  -----------------------------       CHECK IF STACK IS VALID        ----------------------------------
+
+Errors isStackValid(Stack* stack, bool* isValid) {
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(isValid);
 
     // TODO:
     *isValid  = true;
+    *isValid &= stack->elementSize      <  MAX_STACK_ELEM_SIZE;
+    *isValid &= stack->elementSize      >  0;
     *isValid &= stack->numberOfElements >= 0;
     *isValid &= stack->numberOfElements <= stack->stackCapacity;
     *isValid &= stack->array != NULL    || stack->numberOfElements == 0;
@@ -273,6 +300,26 @@ Errors isStackIsValid(Stack* stack, bool* isValid) {
     return STATUS_OK;
 }
 
+//  -----------------------------       STACK LOGGING        ----------------------------------
+
+Errors logStackElement(const uint8_t* element, size_t elementSize) {
+    IF_ARG_NULL_RETURN(element);
+    IF_NOT_COND_RETURN(elementSize < MAX_STACK_ELEM_SIZE,
+                       ERROR_STACK_ELEM_SIZE_TOO_BIG);
+
+    memset(bufferToOutputStackElems, 0, LOG_BUFFER_SIZE);
+    for (size_t byteInd = 0; byteInd < elementSize; ++byteInd) {
+        uint8_t elem = *(element + byteInd);
+        //LOG_DEBUG_VARS(buffForByte);
+        sprintf(buffForByte, "%p ", elem);
+        strcat(bufferToOutputStackElems, buffForByte);
+        //LOG_DEBUG_VARS(byteInd, elem);
+    }
+    LOG_DEBUG(bufferToOutputStackElems);
+
+    return STATUS_OK;
+}
+
 Errors dumpStackLog(Stack* stack) {
     IF_ARG_NULL_RETURN(stack);
 
@@ -289,7 +336,12 @@ Errors dumpStackLog(Stack* stack) {
         size_t arrInd = elemIndex * stack->elementSize;
         // FIXME: somehow output bytes
         assert(stack->elementSize == 4);
-        LOG_DEBUG_VARS(elemIndex, (int)stack->array[arrInd]);
+
+        //LOG_DEBUG_VARS(elemIndex, (int)stack->array[arrInd]);
+        LOG_DEBUG_VARS(elemIndex);
+
+        Errors error = logStackElement(stack->array + arrInd, stack->elementSize);
+        IF_ERR_RETURN(error);
     }
     LOG_DEBUG("--------------------------------------");
 
@@ -299,15 +351,22 @@ Errors dumpStackLog(Stack* stack) {
     return STATUS_OK;
 }
 
+
+
+//  -----------------------------       STACK DESTRUCTOR        ----------------------------------
+
 Errors destructStack(Stack* stack) {
     IF_ARG_NULL_RETURN(stack);
 
     RETURN_IF_INVALID(stack);
 
+    LOG_DEBUG("destrucing stack");
     FREE(stack->array);
     stack->numberOfElements = 0;
     stack->stackCapacity    = 0;
     stack->structHash       = 0;
+    FREE(bufferToOutputStackElems);
+    FREE(buffForByte);
 
     return STATUS_OK;
 }

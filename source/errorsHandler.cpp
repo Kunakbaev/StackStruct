@@ -23,6 +23,10 @@ const char* getErrorMessage(Errors error) {
             return "Error: incorrect capacity change koefficient.\n";
         case ERROR_STACK_MEMORY_HASH_CHECK_FAILED:
             return "Error: hashes not equal.\n";
+        case ERROR_STACK_ELEM_SIZE_TOO_SMALL:
+            return "Error: size of stack element is too small (possibly set to 0).\n";
+        case ERROR_STACK_ELEM_SIZE_TOO_BIG:
+            return "Error: size of stack element is too big.\n";
         default:
             return "Unknown error.\n";
     }

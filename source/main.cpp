@@ -36,7 +36,7 @@ int main() {
     }
 
     LOG_DEBUG("------------ popping elements --------------");
-    //return 0;
+    // return 0;
     // stack.numberOfElements = 3;
     // stack.array[1] = 2;
 
