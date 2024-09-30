@@ -37,8 +37,8 @@ enum Errors {
     ERROR_INVALID_ARGUMENT                  = 1,                  // usually when argument is set to NULL
     ERROR_MEMORY_ALLOCATION_ERROR           = 2,                  // usually when memory allocation by calloc fails
     ERROR_MEMORY_REALLOCATION_ERROR         = 3,                  // couldn't reallocate memory
+    // STACK_ERROR                             = 4,                  // error occured in stack
 
-    //  --------------------------      STACK ERRORS       ------------------------------
     ERROR_STACK_INVALID_FIELD_VALUES        = 4,                  // some of stack fields are invalid
     ERROR_STACK_INCORRECT_NUM_OF_ELEMS      = 5,                  // incorrect index of stack (usually happens during push or pop)
     ERROR_STACK_NEW_CAPACITY_TOO_BIG        = 6,                  // new capacity is bigger than max capacity

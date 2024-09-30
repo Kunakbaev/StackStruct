@@ -22,6 +22,9 @@ std::mt19937_64 rnd(std::chrono::steady_clock::now().time_since_epoch().count())
 const uint64_t RAND_NUMBER_FOR_HASHES        = rnd();
 const uint64_t BASE_NUMBER_FOR_HASHES        = rnd() >> 32; // ???
 
+const uint64_t FRONT_CANARY                  = rnd();
+const uint64_t  BACK_CANARY                  = rnd();
+
 constexpr const size_t MAX_STACK_ELEM_SIZE   = 32;
 constexpr const size_t MIN_STACK_CAPACITY    = 8;
 constexpr const size_t MAX_STACK_CAPACITY    = 1 << 10;
@@ -95,10 +98,12 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
     IF_NOT_COND_RETURN(initialCapacity <  MAX_STACK_CAPACITY,
                        ERROR_INVALID_ARGUMENT);
 
+    stack->frontCanary = FRONT_CANARY;
     stack->numberOfElements = 0;
     stack->stackCapacity    = initialCapacity;
     stack->array            = NULL;
     stack->elementSize      = stackElemSize;
+    stack->backCanary  = BACK_CANARY;
 
     if (initialCapacity > 0) {
         stack->array = (uint8_t*)calloc(initialCapacity, sizeof(uint8_t));
@@ -259,12 +264,22 @@ Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
 
 //  -----------------------------       CHECK IF STACK IS VALID        ----------------------------------
 
-Errors isStackValid(Stack* stack, bool* isValid) {
+Errors isStackValid(const Stack* stack, bool* isValid) {
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(isValid);
 
     // TODO:
     *isValid  = true;
+
+#ifdef IS_CANARY_PROTECTION_ON
+    // stack smash attack (or just error) from one of the ends of struct
+    if (stack->frontCanary != FRONT_CANARY ||
+        stack->backCanary  !=  BACK_CANARY) {
+        LOG_ERROR("Error: canary protection failed.\n");
+        return STATUS_OK;
+    }
+#endif
+
     *isValid &= stack->elementSize      <  MAX_STACK_ELEM_SIZE;
     *isValid &= stack->elementSize      >  0;
     *isValid &= stack->numberOfElements >= 0;
@@ -278,7 +293,7 @@ Errors isStackValid(Stack* stack, bool* isValid) {
     Errors err = getHashOfStack(stack, &correctHashStack);
     IF_ERR_RETURN(err);
 
-    LOG_DEBUG_VARS(correctHashStack, stack->structHash);
+    // LOG_DEBUG_VARS(correctHashStack, stack->structHash);
     IF_ERR_RETURN(err);
     IF_NOT_COND_RETURN(correctHashStack == stack->structHash,
                        ERROR_STACK_MEMORY_HASH_CHECK_FAILED);
@@ -307,7 +322,7 @@ Errors logStackElement(const uint8_t* element, size_t elementSize) {
     return STATUS_OK;
 }
 
-Errors dumpStackLog(Stack* stack) {
+Errors dumpStackLog(const Stack* stack) {
     IF_ARG_NULL_RETURN(stack);
 
     RETURN_IF_INVALID(stack);

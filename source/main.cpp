@@ -4,6 +4,7 @@
 #include "../LoggerLib/include/logLib.hpp"
 
 #define HASH_MEMORY_CHECK_DEFINE 1
+#define IS_CANARY_PROTECTION_ON
 
 #include "../include/stackLib.hpp"
 
@@ -16,6 +17,10 @@ int main() {
     // if stack parametre is void*, then user doesn't know about fields of Stack struct???
     error = constructStack(&stack, 0, 4);
     IF_ERR_RETURN(error);
+
+    uint8_t* ptr = (uint8_t*)&stack;
+    //*ptr = 19290;
+    *(ptr + 1) = 102;
 
     dumpStackLog(&stack);
     LOG_DEBUG("ok");
