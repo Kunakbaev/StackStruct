@@ -3,24 +3,72 @@
 
 #include "../LoggerLib/include/logLib.hpp"
 
-#define HASH_MEMORY_CHECK_DEFINE 1
-#define IS_CANARY_PROTECTION_ON
+// doesn't work
+// #define HASH_MEMORY_CHECK_DEFINE 1
+// #define IS_CANARY_PROTECTION_ON
 
 #include "../include/stackLib.hpp"
+#include "../include/memorySafeArray.hpp"
+
+Errors testSafeArray();
+Errors testStack();
 
 int main() {
     setLoggingLevel(DEBUG);
 
-    Stack stack = {};
+    Errors error = STATUS_OK;
+    // error = testSafeArray();
+    // IF_ERR_RETURN(error);
+
+    error = testStack();
+    IF_ERR_RETURN(error);
+
+    return 0;
+}
+
+
+
+// -----------------------------------     TEST SAFE ARRAY      -----------------------------
+
+// очень смешное название, пока нифига не сейф
+Errors testSafeArray() {
+    SafeArray array = {};
+    Errors error = STATUS_OK;
+
+    error = constructSafeArray(10, 4, &array);
+    IF_ERR_RETURN(error);
+    //ptr
+
+    int num = 10;
+    error = setValueToSafeArrayElement(&array, 1, &num);
+    IF_ERR_RETURN(error);
+
+    uint8_t* ptr = (uint8_t*)array.array;
+    *ptr = 0;
+
+    int elem = -1;
+    error = getValueFromSafeArrayElement(&array, 0, &elem);
+    IF_ERR_RETURN(error);
+    LOG_DEBUG_VARS(elem);
+
+    return STATUS_OK;
+}
+
+
+
+// -----------------------------------     TEST STACK      -----------------------------
+
+Errors testStack() {
+        Stack stack = {};
     Errors error = STATUS_OK;
 
     // if stack parametre is void*, then user doesn't know about fields of Stack struct???
     error = constructStack(&stack, 0, 4);
     IF_ERR_RETURN(error);
 
-    uint8_t* ptr = (uint8_t*)&stack;
-    //*ptr = 19290;
-    *(ptr + 1) = 102;
+    // uint8_t* ptr = (uint8_t*)stack.array.array;
+    // //*ptr = 19290;
+    // *(ptr + 1) = 102;
 
     dumpStackLog(&stack);
     LOG_DEBUG("ok");
@@ -39,6 +87,10 @@ int main() {
         // stack.array = NULL;
         dumpStackLog(&stack);
     }
+
+    uint8_t* ptr = (uint8_t*)stack.array.array;
+    //*ptr = 19290;
+    *(ptr + 1) = 102;
 
     LOG_DEBUG("------------ popping elements --------------");
     // return 0;
@@ -60,5 +112,5 @@ int main() {
     error = destructStack(&stack);
     IF_ERR_RETURN(error);
 
-    return 0;
+    return STATUS_OK;
 }

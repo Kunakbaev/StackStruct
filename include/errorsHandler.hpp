@@ -46,6 +46,8 @@ enum Errors {
     ERROR_STACK_MEMORY_HASH_CHECK_FAILED    = 8,                  // hashes are not equal
     ERROR_STACK_ELEM_SIZE_TOO_SMALL         = 9,                  // size of stack element is too small (possibly set to 0)
     ERROR_STACK_ELEM_SIZE_TOO_BIG           = 10,                 // size of stack element is too big
+
+    ERROR_ARRAY_BAD_INDEX                   = 11,                 // index of element is < 0 or >= size of array
 };
 
 const char* getErrorMessage(Errors error);

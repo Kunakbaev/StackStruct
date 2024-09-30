@@ -4,12 +4,13 @@
 #include <inttypes.h>
 
 #include "errorsHandler.hpp"
+#include "memorySafeArray.hpp"
 
 // #ifdef HASH_MEMORY_CHECK_DEFINE
 // #define IS_HASH_MEMORY_CHECK_DEFINE
 // #endif
 
-#define IS_HASH_MEMORY_CHECK_DEFINE
+// #define IS_HASH_MEMORY_CHECK_DEFINE
 
 // enum StackError {
 //     ERROR_STACK_INVALID_FIELD_VALUES        = 4,                  // some of stack fields are invalid
@@ -29,9 +30,7 @@ struct Stack {
 
     uint64_t structHash;
     int numberOfElements;
-    int stackCapacity;
-    uint8_t* array;
-    size_t elementSize;
+    SafeArray array;
 
     uint64_t backCanary;
 };

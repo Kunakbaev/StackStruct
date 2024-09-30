@@ -27,6 +27,10 @@ const char* getErrorMessage(Errors error) {
             return "Error: size of stack element is too small (possibly set to 0).\n";
         case ERROR_STACK_ELEM_SIZE_TOO_BIG:
             return "Error: size of stack element is too big.\n";
+
+        case ERROR_ARRAY_BAD_INDEX:
+            return "Error: index of element is < 0 or >= size of array.\n";
+
         default:
             return "Unknown error.\n";
     }

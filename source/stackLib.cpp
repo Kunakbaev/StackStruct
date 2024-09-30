@@ -59,17 +59,23 @@ static Errors getHashOfStack(const Stack* stack, uint64_t* stackHash) {
     Errors err = STATUS_OK;
     err = addNumToHash(stackHash, (uint64_t*)&stack->numberOfElements);
     IF_ERR_RETURN(err);
-    addNumToHash(stackHash,       (uint64_t*)&stack->stackCapacity);
+    addNumToHash(stackHash,       (uint64_t*)&stack->array.arraySize);
     IF_ERR_RETURN(err);
-    addNumToHash(stackHash,       (uint64_t*)&stack->array); // address of a pointer
+    addNumToHash(stackHash,       (uint64_t*)&stack->array.array); // address of a pointer
     IF_ERR_RETURN(err);
 
     // for (size_t elemInd = 0; elemInd < stack->numberOfElements; ++elemInd) {
     //     err = addNumToHash(stackHash, (uint64_t*)&stack->array[elemInd]);
     //     IF_ERR_RETURN(err);
     // }
-    for (size_t byteInd = 0; byteInd < stack->numberOfElements * stack->elementSize; ++byteInd) {
-        err = addNumToHash(stackHash, (uint64_t*)&stack->array[byteInd]);
+
+    // FIXME: not appropriate to do like so
+    for (size_t byteInd = 0; byteInd < stack->numberOfElements * stack->array.elementSize; ++byteInd) {
+        LOG_DEBUG_VARS(byteInd, stack->array.arraySize, stack->array.elementSize);
+        LOG_DEBUG_VARS(stack->numberOfElements);
+        // IF_NOT_COND_RETURN(byteInd < stack->array.arraySize,
+        //                    ERROR_ARRAY_BAD_INDEX);
+        err = addNumToHash(stackHash, (uint64_t*)&stack->array.array[byteInd]);
         IF_ERR_RETURN(err);
     }
 
@@ -100,16 +106,10 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
 
     stack->frontCanary = FRONT_CANARY;
     stack->numberOfElements = 0;
-    stack->stackCapacity    = initialCapacity;
-    stack->array            = NULL;
-    stack->elementSize      = stackElemSize;
-    stack->backCanary  = BACK_CANARY;
+    Errors error = constructSafeArray(initialCapacity, stackElemSize, &stack->array);
+    IF_ERR_RETURN(error);
 
-    if (initialCapacity > 0) {
-        stack->array = (uint8_t*)calloc(initialCapacity, sizeof(uint8_t));
-        IF_NOT_COND_RETURN(stack->array != NULL,
-                           ERROR_MEMORY_ALLOCATION_ERROR);
-    }
+    stack->backCanary  = BACK_CANARY;
 
     bufferToOutputStackElems = (char*)calloc(LOG_BUFFER_SIZE, sizeof(char));
     IF_NOT_COND_RETURN(bufferToOutputStackElems != NULL,
@@ -118,7 +118,7 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
     IF_NOT_COND_RETURN(buffForByte != NULL,
                        ERROR_MEMORY_ALLOCATION_ERROR);
 
-    Errors error = recalculateHashOfStack(stack);
+    error = recalculateHashOfStack(stack);
     IF_ERR_RETURN(error);
 
     // just in case
@@ -128,21 +128,6 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
 }
 
 //  -----------------------------       MEMORY MANAGMENT        ----------------------------------
-
-static Errors myRecalloc(void** ptr, size_t newNumOfBytes) {
-    IF_ARG_NULL_RETURN(ptr);
-
-    // LOG_DEBUG_VARS("Reallocating", newNumOfBytes);
-    void* tmpPtr = realloc(*ptr, newNumOfBytes);
-    IF_NOT_COND_RETURN(tmpPtr, ERROR_MEMORY_REALLOCATION_ERROR);
-    *ptr = tmpPtr;
-    // LOG_DEBUG_VARS(tmpPtr, ptr);
-
-    // TODO:
-    // memset(ptr, 0, newNumOfBytes);
-
-    return STATUS_OK;
-}
 
 static double sq(double x) {
     return x * x;
@@ -156,15 +141,10 @@ static Errors reallocateMemoryForStackIfNeeded(Stack* stack, int newCapacity) {
     if (newCapacity < MIN_STACK_CAPACITY)
         newCapacity = MIN_STACK_CAPACITY;
 
-    if (newCapacity == stack->stackCapacity)
-        return STATUS_OK;
-
     IF_NOT_COND_RETURN(newCapacity <= MAX_STACK_CAPACITY,
                        ERROR_STACK_NEW_CAPACITY_TOO_BIG);
 
-    Errors error = myRecalloc((void**)&stack->array,
-                              newCapacity * stack->elementSize);
-    stack->stackCapacity = newCapacity;
+    Errors error = resizeSafeArray(&stack->array, newCapacity);
     IF_ERR_RETURN(error);
     return error;
 }
@@ -175,16 +155,17 @@ static Errors reallocateStackArrIfNeeded(Stack* stack) {
                        ERROR_STACK_INCORRECT_CAP_KOEF);
 
     // there are too many unused elements in stack
-    int newCapacityLess = roundl(stack->stackCapacity / sq(REALLOC_SIZE_KOEF));
+    int stackCapacity = stack->array.arraySize;
+    int newCapacityLess = roundl(stackCapacity / sq(REALLOC_SIZE_KOEF));
     // we need more elements, so we will make capacity of stack multiplied by some constant
-    int newCapacityMore = roundl(stack->stackCapacity * REALLOC_SIZE_KOEF);
+    int newCapacityMore = roundl(stackCapacity * REALLOC_SIZE_KOEF);
 
     Errors error = STATUS_OK;
     if (stack->numberOfElements <  newCapacityLess) {
         error = reallocateMemoryForStackIfNeeded(stack, newCapacityLess);
         IF_ERR_RETURN(error);
     }
-    if (stack->numberOfElements == stack->stackCapacity) {
+    if (stack->numberOfElements == stackCapacity) {
         error = reallocateMemoryForStackIfNeeded(stack, newCapacityMore);
         IF_ERR_RETURN(error);
     }
@@ -211,15 +192,12 @@ Errors pushElementToStack(Stack* stack, const void* elementVoidPtr) {
 
     RETURN_IF_INVALID(stack);
 
-    IF_NOT_COND_RETURN(stack->numberOfElements + 1 <= stack->stackCapacity,
+    IF_NOT_COND_RETURN(stack->numberOfElements + 1 <= stack->array.arraySize,
                        ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
 
     // FIXME: copy is bad, maybe make stack of pointers to elements
-    for (size_t byteInd = 0; byteInd < stack->elementSize; ++byteInd) {
-        //LOG_DEBUG_VARS(byteInd, *(element + byteInd));
-        int arrInd = stack->numberOfElements * stack->elementSize + byteInd;
-        stack->array[arrInd] = *(element + byteInd);
-    }
+    error = setValueToSafeArrayElement(&stack->array, stack->numberOfElements, elementVoidPtr);
+    IF_ERR_RETURN(error);
     ++stack->numberOfElements;
 
     error = recalculateHashOfStack(stack);
@@ -236,10 +214,10 @@ Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
 
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(element);
-
     RETURN_IF_INVALID(stack);
-    IF_NOT_COND_RETURN(stack->array != NULL,
-                       ERROR_STACK_INVALID_FIELD_VALUES);
+
+    // IF_NOT_COND_RETURN(stack->array.array != NULL,
+    //                    ERROR_STACK_INVALID_FIELD_VALUES);
 
     Errors error = reallocateStackArrIfNeeded(stack);
     IF_ERR_RETURN(error);
@@ -247,11 +225,8 @@ Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
     IF_NOT_COND_RETURN(stack->numberOfElements >= 1,
                        ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
 
-    for (size_t byteInd = 0; byteInd < stack->elementSize; ++byteInd) {
-        int arrInd = (stack->numberOfElements - 1) * stack->elementSize + byteInd;
-        //LOG_DEBUG_VARS(arrInd, *element, stack->array[arrInd]);
-        *(element + byteInd) = stack->array[arrInd];
-    }
+    error = setValueToSafeArrayElement(&stack->array, stack->numberOfElements - 1, elementVoidPtr);
+    IF_ERR_RETURN(error);
     --stack->numberOfElements;
 
     error = recalculateHashOfStack(stack);
@@ -280,11 +255,11 @@ Errors isStackValid(const Stack* stack, bool* isValid) {
     }
 #endif
 
-    *isValid &= stack->elementSize      <  MAX_STACK_ELEM_SIZE;
-    *isValid &= stack->elementSize      >  0;
-    *isValid &= stack->numberOfElements >= 0;
-    *isValid &= stack->numberOfElements <= stack->stackCapacity;
-    *isValid &= stack->array != NULL    || stack->numberOfElements == 0;
+    *isValid &= stack->array.elementSize   <  MAX_STACK_ELEM_SIZE;
+    *isValid &= stack->array.elementSize   >  0;
+    *isValid &= stack->numberOfElements    >= 0;
+    *isValid &= stack->numberOfElements    <= stack->array.arraySize;
+    *isValid &= stack->array.array != NULL || stack->numberOfElements == 0;
     if (!(*isValid))
         return STATUS_OK;
 
@@ -330,19 +305,19 @@ Errors dumpStackLog(const Stack* stack) {
     LOG_DEBUG("--------------------------------------");
     LOG_DEBUG("Stack:");
     LOG_DEBUG_VARS(stack->numberOfElements);
-    LOG_DEBUG_VARS(stack->stackCapacity);
+    LOG_DEBUG_VARS(stack->array.arraySize);
     LOG_DEBUG_VARS(stack->structHash);
-    LOG_DEBUG_VARS(stack->array);
+    LOG_DEBUG_VARS(stack->array.array);
     LOG_DEBUG("elements:");
     for (size_t elemIndex = 0; elemIndex < stack->numberOfElements; ++elemIndex) {
-        size_t arrInd = elemIndex * stack->elementSize;
+        size_t arrInd = elemIndex * stack->array.elementSize;
         // FIXME: somehow output bytes
-        assert(stack->elementSize == 4);
+        assert(stack->array.elementSize == 4);
 
         //LOG_DEBUG_VARS(elemIndex, (int)stack->array[arrInd]);
         LOG_DEBUG_VARS(elemIndex);
 
-        Errors error = logStackElement(stack->array + arrInd, stack->elementSize);
+        Errors error = logStackElement(stack->array.array + arrInd, stack->array.elementSize);
         IF_ERR_RETURN(error);
     }
     LOG_DEBUG("--------------------------------------");
@@ -363,9 +338,10 @@ Errors destructStack(Stack* stack) {
     RETURN_IF_INVALID(stack);
 
     LOG_DEBUG("destrucing stack");
-    FREE(stack->array);
+    Errors error = destructSafeArray(&stack->array);
+    IF_ERR_RETURN(error);
+
     stack->numberOfElements = 0;
-    stack->stackCapacity    = 0;
     stack->structHash       = 0;
     FREE(bufferToOutputStackElems);
     FREE(buffForByte);
