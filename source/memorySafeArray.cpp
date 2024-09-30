@@ -16,9 +16,16 @@
         }                                                       \
     } while (0)
 
-const size_t MAX_ARRAY_SIZE = 1 << 13;
+const size_t MAX_ARRAY_SIZE                = 1 << 13;
+constexpr const size_t MAX_ARRAY_ELEM_SIZE = 32;
+
+const size_t LOG_BUFFER_SIZE                 = 200;
+char* bufferToOutputStackElems               = "";
+char* buffForByte                            = "";
 
 //std::mt19937_64 rnd2(std::chrono::steady_clock::now().time_since_epoch().count());
+// easier for debug with constant seed
+// TODO: return dynamic seed
 std::mt19937_64 rnd2(228);
 
 // these are consts
@@ -81,6 +88,15 @@ Errors constructSafeArray(size_t arraySize, size_t elementSize, SafeArray* array
     }
     array->arraySize = arraySize;
 
+    bufferToOutputStackElems = (char*)calloc(LOG_BUFFER_SIZE, sizeof(char));
+    IF_NOT_COND_RETURN(bufferToOutputStackElems != NULL,
+                       ERROR_MEMORY_ALLOCATION_ERROR);
+    buffForByte = (char*)calloc(4, sizeof(char*));
+    IF_NOT_COND_RETURN(buffForByte != NULL,
+                       ERROR_MEMORY_ALLOCATION_ERROR);
+
+    RETURN_IF_ARR_INVALID(array);
+
     return STATUS_OK;
 }
 
@@ -107,7 +123,7 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
 
     if (newSize > oldSize) {
         size_t deltaBytes = (newSize - oldSize) * array->elementSize;
-        memset(array->array + oldSize + SIZE_OF_CANARY * 2, 0, deltaBytes);
+        memset(array->array + oldSize + SIZE_OF_CANARY, 0, deltaBytes);
     }
 
 #ifdef IS_CANARY_PROTECTION_ON
@@ -115,14 +131,14 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     IF_ERR_RETURN(error);
 #endif
 
+    RETURN_IF_ARR_INVALID(array);
+
     return STATUS_OK;
 }
 
 Errors setValueToSafeArrayElement(SafeArray* array, size_t elementIndex, const void* elementVoidPtr) {
-    uint8_t* element = (uint8_t*)elementVoidPtr;
-
     IF_ARG_NULL_RETURN(array);
-    IF_ARG_NULL_RETURN(element);
+    IF_ARG_NULL_RETURN(elementVoidPtr);
     IF_ARG_NULL_RETURN(array->array);
     RETURN_IF_ARR_INVALID(array);
 
@@ -133,29 +149,69 @@ Errors setValueToSafeArrayElement(SafeArray* array, size_t elementIndex, const v
     int arrInd = SIZE_OF_CANARY + elementIndex * array->elementSize;
     Errors error = myMemCopy(array->array + arrInd, elementVoidPtr, array->elementSize);
 
+    RETURN_IF_ARR_INVALID(array);
+
     return error;
 }
 
 Errors getValueFromSafeArrayElement(const SafeArray* array, size_t elementIndex, void* elementVoidPtr) {
-    uint8_t* element = (uint8_t*)(elementVoidPtr);
-
     IF_ARG_NULL_RETURN(array);
     IF_ARG_NULL_RETURN(array->array);
-    IF_ARG_NULL_RETURN(element);
+    IF_ARG_NULL_RETURN(elementVoidPtr);
     RETURN_IF_ARR_INVALID(array);
-
-//     for (size_t byteInd = 0; byteInd < array->elementSize; ++byteInd) {
-//         int arrInd = SIZE_OF_CANARY + elementIndex * array->elementSize + byteInd;
-//         //IF_NOT_COND_RETURN(arrInd < array->ele
-//         //LOG_DEBUG_VARS(arrInd, *element, stack->array[arrInd]);
-//         *(element + byteInd) = array->array[arrInd];
-//     }
 
     int arrInd = SIZE_OF_CANARY + elementIndex * array->elementSize;
     Errors error = myMemCopy(elementVoidPtr, array->array + arrInd, array->elementSize);
     IF_ERR_RETURN(error);
 
+    RETURN_IF_ARR_INVALID(array);
+
     return error;
+}
+
+//  -----------------------------       SAFE ARRAY LOGGING        ----------------------------------
+
+static Errors logStackElement(const uint8_t* element, size_t elementSize) {
+    IF_ARG_NULL_RETURN(element);
+    IF_NOT_COND_RETURN(elementSize < MAX_ARRAY_ELEM_SIZE,
+                       ERROR_STACK_ELEM_SIZE_TOO_BIG);
+
+    memset(bufferToOutputStackElems, 0, LOG_BUFFER_SIZE);
+    for (size_t byteInd = 0; byteInd < elementSize; ++byteInd) {
+        uint8_t elem = *(element + byteInd);
+        //LOG_DEBUG_VARS(buffForByte);
+        sprintf(buffForByte, "%p ", elem);
+        strcat(bufferToOutputStackElems, buffForByte);
+        //LOG_DEBUG_VARS(byteInd, elem);
+    }
+    LOG_DEBUG(bufferToOutputStackElems);
+
+    return STATUS_OK;
+}
+
+Errors dumpArrayLog(const SafeArray* array) {
+    IF_ARG_NULL_RETURN(array);
+    RETURN_IF_ARR_INVALID(array);
+
+    LOG_DEBUG("--------------------------------------");
+    LOG_DEBUG("Array:");
+    LOG_DEBUG_VARS(array);
+    LOG_DEBUG_VARS(array->arraySize);
+    LOG_DEBUG_VARS(array->elementSize);
+    // LOG_DEBUG_VARS(array->array[4], array->array[5], array->array[6]);
+    LOG_DEBUG("elements:");
+    for (size_t elemIndex = 0; elemIndex < array->arraySize; ++elemIndex) {
+        size_t arrInd = SIZE_OF_CANARY + elemIndex * array->elementSize;
+        LOG_DEBUG_VARS(elemIndex);
+        Errors error = logStackElement(array->array + arrInd, array->elementSize);
+        IF_ERR_RETURN(error);
+    }
+    LOG_DEBUG("--------------------------------------");
+
+    // just in case, maybe too paranoid
+    RETURN_IF_ARR_INVALID(array);
+
+    return STATUS_OK;
 }
 
 Errors isSafeArrayValid(const SafeArray* array, bool* isValid) {
@@ -203,6 +259,9 @@ Errors destructSafeArray(SafeArray* array) {
     FREE(array->array);
     array->arraySize   = 0;
     array->elementSize = 0;
+
+    FREE(bufferToOutputStackElems);
+    FREE(buffForByte);
 
     return STATUS_OK;
 }

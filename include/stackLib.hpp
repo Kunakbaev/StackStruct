@@ -22,9 +22,6 @@
 //     ERROR_STACK_ELEM_SIZE_TOO_BIG           = 10,                 // size of stack element is too big
 // };
 
-// FIXME: maybe change uint64_t type of canary to uint8_t array with some size, so canary variable can have some
-// arbitrary size
-
 struct Stack {
     uint64_t frontCanary;
 

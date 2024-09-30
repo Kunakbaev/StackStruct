@@ -24,6 +24,7 @@ Errors constructSafeArray(size_t arraySize, size_t elementSize, SafeArray* array
 Errors setValueToSafeArrayElement(SafeArray* array, size_t elementIndex, const void* element);
 Errors getValueFromSafeArrayElement(const SafeArray* array, size_t elementIndex, void* element);
 Errors resizeSafeArray(SafeArray* array, size_t newSize);
+Errors dumpArrayLog(const SafeArray* array);
 Errors isSafeArrayValid(const SafeArray* array, bool* isValid);
 Errors  destructSafeArray(SafeArray* array);
 

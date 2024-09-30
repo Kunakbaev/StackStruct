@@ -43,8 +43,11 @@ Errors testSafeArray() {
     error = setValueToSafeArrayElement(&array, 1, &num);
     IF_ERR_RETURN(error);
 
-    uint8_t* ptr = (uint8_t*)array.array;
-    *ptr = 0;
+    // uint8_t* ptr = (uint8_t*)array.array;
+    // *ptr = 0;
+
+    error = dumpArrayLog(&array);
+    IF_ERR_RETURN(error);
 
     int elem = -1;
     error = getValueFromSafeArrayElement(&array, 0, &elem);
@@ -90,7 +93,7 @@ Errors testStack() {
 
     uint8_t* ptr = (uint8_t*)stack.array.array;
     //*ptr = 19290;
-    *(ptr + 1) = 102;
+    // *(ptr + 1) = 102;
 
     LOG_DEBUG("------------ popping elements --------------");
     // return 0;

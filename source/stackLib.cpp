@@ -31,10 +31,6 @@ constexpr const size_t MAX_STACK_CAPACITY    = 1 << 10;
 constexpr const double REALLOC_SIZE_KOEF     = 2.0;
 constexpr const double MIN_REALLOC_SIZE_KOEF = 1.5;
 
-const size_t LOG_BUFFER_SIZE                 = 200;
-char* bufferToOutputStackElems               = "";
-char* buffForByte                            = "";
-
 static_assert(MIN_STACK_CAPACITY    > 0);
 static_assert(MIN_REALLOC_SIZE_KOEF > 1);
 static_assert(REALLOC_SIZE_KOEF     > MIN_REALLOC_SIZE_KOEF);
@@ -63,11 +59,6 @@ static Errors getHashOfStack(const Stack* stack, uint64_t* stackHash) {
     IF_ERR_RETURN(err);
     addNumToHash(stackHash,       (uint64_t*)&stack->array.array); // address of a pointer
     IF_ERR_RETURN(err);
-
-    // for (size_t elemInd = 0; elemInd < stack->numberOfElements; ++elemInd) {
-    //     err = addNumToHash(stackHash, (uint64_t*)&stack->array[elemInd]);
-    //     IF_ERR_RETURN(err);
-    // }
 
     // FIXME: not appropriate to do like so
     for (size_t byteInd = 0; byteInd < stack->numberOfElements * stack->array.elementSize; ++byteInd) {
@@ -110,13 +101,6 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
     IF_ERR_RETURN(error);
 
     stack->backCanary  = BACK_CANARY;
-
-    bufferToOutputStackElems = (char*)calloc(LOG_BUFFER_SIZE, sizeof(char));
-    IF_NOT_COND_RETURN(bufferToOutputStackElems != NULL,
-                       ERROR_MEMORY_ALLOCATION_ERROR);
-    buffForByte = (char*)calloc(4, sizeof(char*));
-    IF_NOT_COND_RETURN(buffForByte != NULL,
-                       ERROR_MEMORY_ALLOCATION_ERROR);
 
     error = recalculateHashOfStack(stack);
     IF_ERR_RETURN(error);
@@ -195,7 +179,6 @@ Errors pushElementToStack(Stack* stack, const void* elementVoidPtr) {
     IF_NOT_COND_RETURN(stack->numberOfElements + 1 <= stack->array.arraySize,
                        ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
 
-    // FIXME: copy is bad, maybe make stack of pointers to elements
     error = setValueToSafeArrayElement(&stack->array, stack->numberOfElements, elementVoidPtr);
     IF_ERR_RETURN(error);
     ++stack->numberOfElements;
@@ -243,7 +226,6 @@ Errors isStackValid(const Stack* stack, bool* isValid) {
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(isValid);
 
-    // TODO:
     *isValid  = true;
 
 #ifdef IS_CANARY_PROTECTION_ON
@@ -251,6 +233,7 @@ Errors isStackValid(const Stack* stack, bool* isValid) {
     if (stack->frontCanary != FRONT_CANARY ||
         stack->backCanary  !=  BACK_CANARY) {
         LOG_ERROR("Error: canary protection failed.\n");
+        *isValid = false;
         return STATUS_OK;
     }
 #endif
@@ -279,24 +262,6 @@ Errors isStackValid(const Stack* stack, bool* isValid) {
 
 //  -----------------------------       STACK LOGGING        ----------------------------------
 
-Errors logStackElement(const uint8_t* element, size_t elementSize) {
-    IF_ARG_NULL_RETURN(element);
-    IF_NOT_COND_RETURN(elementSize < MAX_STACK_ELEM_SIZE,
-                       ERROR_STACK_ELEM_SIZE_TOO_BIG);
-
-    memset(bufferToOutputStackElems, 0, LOG_BUFFER_SIZE);
-    for (size_t byteInd = 0; byteInd < elementSize; ++byteInd) {
-        uint8_t elem = *(element + byteInd);
-        //LOG_DEBUG_VARS(buffForByte);
-        sprintf(buffForByte, "%p ", elem);
-        strcat(bufferToOutputStackElems, buffForByte);
-        //LOG_DEBUG_VARS(byteInd, elem);
-    }
-    LOG_DEBUG(bufferToOutputStackElems);
-
-    return STATUS_OK;
-}
-
 Errors dumpStackLog(const Stack* stack) {
     IF_ARG_NULL_RETURN(stack);
 
@@ -307,19 +272,8 @@ Errors dumpStackLog(const Stack* stack) {
     LOG_DEBUG_VARS(stack->numberOfElements);
     LOG_DEBUG_VARS(stack->array.arraySize);
     LOG_DEBUG_VARS(stack->structHash);
-    LOG_DEBUG_VARS(stack->array.array);
-    LOG_DEBUG("elements:");
-    for (size_t elemIndex = 0; elemIndex < stack->numberOfElements; ++elemIndex) {
-        size_t arrInd = elemIndex * stack->array.elementSize;
-        // FIXME: somehow output bytes
-        assert(stack->array.elementSize == 4);
 
-        //LOG_DEBUG_VARS(elemIndex, (int)stack->array[arrInd]);
-        LOG_DEBUG_VARS(elemIndex);
-
-        Errors error = logStackElement(stack->array.array + arrInd, stack->array.elementSize);
-        IF_ERR_RETURN(error);
-    }
+    // TODO: dump array
     LOG_DEBUG("--------------------------------------");
 
     // just in case, maybe too paranoid
@@ -343,8 +297,6 @@ Errors destructStack(Stack* stack) {
 
     stack->numberOfElements = 0;
     stack->structHash       = 0;
-    FREE(bufferToOutputStackElems);
-    FREE(buffForByte);
 
     return STATUS_OK;
 }
