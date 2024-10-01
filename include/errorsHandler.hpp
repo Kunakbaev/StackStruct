@@ -55,6 +55,7 @@ enum Errors {
     ERROR_ARRAY_SIZE_EMPTY_ARRAY_NOT_ZERO_SIZE  = 17,                 // array is NULL, but it's size is greater than zero
     ERROR_ARRAY_SIZE_IS_TOO_BIG                 = 18,                 // array size is too big
     ERROR_ARRAY_NEW_ARRAY_SIZE_IS_TOO_BIG       = 19,                 // new size for array is too big
+    ERROR_ARRAY_ELEMENT_SIZE_IS_TOO_BIG         = 20,                 // size of array's element is too big
 };
 
 const char* getErrorMessage(Errors error);

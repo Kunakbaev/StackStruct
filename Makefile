@@ -11,6 +11,7 @@ CFLAGS = -D _DEBUG
 # 3) @> @^ @< $<
 # 4) PHONY - что делает
 
+# ASK: How to make multiple makefiles, so loggerLib can be run indivually without warnings
 SOURCE_DIR        := source
 LIB_RUN_NAME      := stackStruct
 BUILD_DIR         := building

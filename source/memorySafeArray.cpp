@@ -11,8 +11,8 @@
         IF_ERR_RETURN(errorTmp);                                \
     } while (0)
 
-const size_t MAX_ARRAY_SIZE                = 1 << 13;
-constexpr const size_t MAX_ARRAY_ELEM_SIZE = 32;
+const size_t MAX_ARRAY_SIZE      = 1 << 13;
+const size_t MAX_ARRAY_ELEM_SIZE = 32;
 
 const size_t LOG_BUFFER_SIZE               = 200;
 char* bufferToOutputStackElems             = "";
@@ -99,6 +99,8 @@ static Errors getHashOfArray(const SafeArray* array, uint64_t* arrayHash) {
     return STATUS_OK;
 }
 
+// TODO: when change array by just one index, we can update structureHash without running for everytime
+// ASK: maybe it's better to just put this function's body in ifdef, than to write everywhere same ifdef
 static Errors recalculateHashOfArray(SafeArray* array) {
     IF_ARG_NULL_RETURN(array);
 
@@ -120,10 +122,13 @@ Errors constructSafeArray(size_t arraySize, size_t elementSize, SafeArray* array
 
     initFrontAndBackCanaries();
 
-    Errors error = myMemCopy(array->frontCanary, FRONT_CANARY, SIZE_OF_CANARY);
+    Errors error = STATUS_OK;
+#ifdef IS_CANARY_PROTECTION_ON
+    error = myMemCopy(array->frontCanary, FRONT_CANARY, SIZE_OF_CANARY);
     IF_ERR_RETURN(error);
-    error = myMemCopy(array->backCanary,  BACK_CANARY, SIZE_OF_CANARY);
+    error = myMemCopy(array->backCanary,  BACK_CANARY,  SIZE_OF_CANARY);
     IF_ERR_RETURN(error);
+#endif
 
     if (arraySize > 0) {
         error = resizeSafeArray(array, arraySize);
@@ -149,7 +154,7 @@ Errors constructSafeArray(size_t arraySize, size_t elementSize, SafeArray* array
 }
 
 Errors resizeSafeArray(SafeArray* array, size_t newSize) {
-    LOG_DEBUG_VARS(array);
+    LOG_DEBUG_VARS("resizing array", array, array->arraySize, newSize);
     IF_ARG_NULL_RETURN(array);
     IF_NOT_COND_RETURN(newSize < MAX_ARRAY_SIZE,
                        ERROR_ARRAY_NEW_ARRAY_SIZE_IS_TOO_BIG);
@@ -167,10 +172,13 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     size_t oldSize = array->arraySize;
     array->arraySize = newSize;
 
-    if (newSize > oldSize) {
-        size_t deltaBytes = (newSize - oldSize) * array->elementSize;
-        memset(array->array + oldSize + SIZE_OF_CANARY, 0, deltaBytes);
-    }
+    // cleaning newly allocated memory
+    // ASK: maybe it's better to clear even if we are resizing to a smaller size
+
+    size_t deltaSize = newSize - oldSize;
+    if (deltaSize < 0) deltaSize *= -1;
+    size_t deltaBytes = deltaSize * array->elementSize;
+    memset(array->array + oldSize + SIZE_OF_CANARY, 0, deltaBytes);
 
     Errors error = STATUS_OK;
 #ifdef IS_CANARY_PROTECTION_ON
@@ -278,6 +286,8 @@ Errors isSafeArrayValid(const SafeArray* array) {
                        ERROR_ARRAY_SIZE_EMPTY_ARRAY_NOT_ZERO_SIZE);
     IF_NOT_COND_RETURN(array->arraySize <= MAX_ARRAY_SIZE,
                        ERROR_ARRAY_SIZE_IS_TOO_BIG);
+    IF_NOT_COND_RETURN(array->elementSize < MAX_ARRAY_ELEM_SIZE,
+                       ERROR_ARRAY_ELEMENT_SIZE_IS_TOO_BIG);
     if (array->array == NULL)
         return STATUS_OK;
 
@@ -288,8 +298,8 @@ Errors isSafeArrayValid(const SafeArray* array) {
     int cmpResultFront       = memcmp(array->array,                    FRONT_CANARY, SIZE_OF_CANARY);
     int cmpResultBack        = memcmp(array->array + backCanaryIndex,  BACK_CANARY,  SIZE_OF_CANARY);
 
-    int cmpResultFrontStruct = memcmp(array->frontCanary, FRONT_CANARY, SIZE_OF_CANARY);
-    int cmpResultBackStruct  = memcmp(array->backCanary,  BACK_CANARY,  SIZE_OF_CANARY);
+    int cmpResultFrontStruct = memcmp(array->frontCanary,              FRONT_CANARY, SIZE_OF_CANARY);
+    int cmpResultBackStruct  = memcmp(array->backCanary,               BACK_CANARY,  SIZE_OF_CANARY);
     // LOG_DEBUG_VARS(array->frontCanary[0], FRONT_CANARY);
     // LOG_DEBUG_VARS(cmpResultFront, cmpResultBack);
     // LOG_DEBUG_VARS(cmpResultFrontStruct, cmpResultBackStruct);
@@ -303,7 +313,7 @@ Errors isSafeArrayValid(const SafeArray* array) {
     Errors err = getHashOfArray(array, &correctArrayHash);
     IF_ERR_RETURN(err);
 
-    LOG_DEBUG_VARS(correctArrayHash, array->structHash);
+    //LOG_DEBUG_VARS(correctArrayHash, array->structHash);
     IF_ERR_RETURN(err);
     IF_NOT_COND_RETURN(correctArrayHash == array->structHash,
                        ERROR_ARRAY_MEMORY_HASH_CHECK_FAILED);

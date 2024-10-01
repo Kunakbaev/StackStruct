@@ -17,11 +17,11 @@ int main() {
     setLoggingLevel(DEBUG);
 
     Errors error = STATUS_OK;
-    error = testSafeArray();
-    IF_ERR_RETURN(error);
-
-    // error = testStack();
+    // error = testSafeArray();
     // IF_ERR_RETURN(error);
+
+    error = testStack();
+    IF_ERR_RETURN(error);
 
     return 0;
 }
@@ -86,14 +86,14 @@ Errors testStack() {
         IF_ERR_RETURN(error);
 
         //stack.numberOfElements = 0;
-        // stack.stackCapacity = 0;
-        // stack.array = NULL;
+        //stack.stackCapacity = 0;
+        //stack.array = NULL;
         dumpStackLog(&stack);
     }
 
     uint8_t* ptr = (uint8_t*)stack.array.array;
     //*ptr = 19290;
-    // *(ptr + 1) = 102;
+    //*(ptr + 19) = 102;
 
     LOG_DEBUG("------------ popping elements --------------");
     // return 0;

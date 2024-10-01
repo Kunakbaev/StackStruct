@@ -55,11 +55,11 @@ static Errors getHashOfStack(const Stack* stack, uint64_t* stackHash) {
     Errors err = STATUS_OK;
     err = addNumToHash(stackHash, (uint64_t*)&stack->numberOfElements);
     IF_ERR_RETURN(err);
-    err = addNumToHash(stackHash,       (uint64_t*)&stack->array.arraySize);
+    err = addNumToHash(stackHash, (uint64_t*)&stack->array.arraySize);
     IF_ERR_RETURN(err);
-    err = addNumToHash(stackHash,       (uint64_t*)&stack->array.array); // address of a pointer
+    err = addNumToHash(stackHash, (uint64_t*)&stack->array.array); // address of a pointer
     IF_ERR_RETURN(err);
-    err = addNumToHash(stackHash,       (uint64_t*)&stack->array.structHash);
+    err = addNumToHash(stackHash, (uint64_t*)&stack->array.structHash);
     IF_ERR_RETURN(err);
 
     return STATUS_OK;
@@ -87,12 +87,11 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
     IF_NOT_COND_RETURN(initialCapacity <  MAX_STACK_CAPACITY,
                        ERROR_INVALID_ARGUMENT);
 
-    stack->frontCanary = FRONT_CANARY;
+    stack->frontCanary      = FRONT_CANARY;
+    stack->backCanary       = BACK_CANARY;
     stack->numberOfElements = 0;
     Errors error = constructSafeArray(initialCapacity, stackElemSize, &stack->array);
     IF_ERR_RETURN(error);
-
-    stack->backCanary  = BACK_CANARY;
 
     error = recalculateHashOfStack(stack);
     IF_ERR_RETURN(error);
@@ -156,11 +155,9 @@ static Errors reallocateStackArrIfNeeded(Stack* stack) {
 
 Errors pushElementToStack(Stack* stack, const void* elementVoidPtr) {
     uint8_t* element = (uint8_t*)elementVoidPtr;
-    // LOG_DEBUG_VARS(element);
 
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(element);
-    //IF_ARG_NULL_RETURN(*element);
     RETURN_IF_INVALID(stack);
 
     Errors error = reallocateStackArrIfNeeded(stack);
@@ -196,8 +193,13 @@ Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
     IF_NOT_COND_RETURN(stack->numberOfElements >= 1,
                        ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
 
-    error = setValueToSafeArrayElement(&stack->array, stack->numberOfElements - 1, elementVoidPtr);
+    error = getValueFromSafeArrayElement(&stack->array, stack->numberOfElements - 1, elementVoidPtr);
     IF_ERR_RETURN(error);
+    // ASK: should I clean elem after pop and how to do it better?
+    //uint8_t zeroBytes[ = {};
+    // error = setValueToSafeArrayElement(&stack->array, stack->numberOfElements - 1, elementVoidPtr);
+    // IF_ERR_RETURN(error);
+
     --stack->numberOfElements;
 
     error = recalculateHashOfStack(stack);
@@ -263,6 +265,8 @@ Errors dumpStackLog(const Stack* stack) {
     LOG_DEBUG_VARS(stack->structHash);
 
     // TODO: dump array
+    Errors error = dumpArrayLog(&stack->array);
+    IF_ERR_RETURN(error);
     LOG_DEBUG("--------------------------------------");
 
     // just in case, maybe too paranoid

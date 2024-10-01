@@ -38,6 +38,8 @@ const char* getErrorMessage(Errors error) {
             return "Error: hash of array structure memory is not correct, stack smash or other error has occured.\n";
         case ERROR_ARRAY_CANARY_PROTECTION_FAILED:
             return "Error: canary protection failed with array struct.\n";
+        case ERROR_ARRAY_ELEMENT_SIZE_IS_TOO_BIG:
+            return "Error: size of array's element is too big.\n";
 
         default:
             return "Unknown error.\n";
