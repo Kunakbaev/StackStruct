@@ -9,12 +9,14 @@
 #define IS_HASH_MEMORY_CHECK_DEFINE
 
 // TODO: add ifndef canary protection, then size_of_canary = 0
+// FIXME: does it work? seems so
 #ifdef IS_CANARY_PROTECTION_ON
 const size_t SIZE_OF_CANARY = 4;
 #else
 const size_t SIZE_OF_CANARY = 0;
 #endif
 
+// someone can accidentically put very big size
 static_assert(SIZE_OF_CANARY < 32);
 
 // TODO: dynamic array for canaries??
@@ -36,7 +38,7 @@ Errors setValueToSafeArrayElement(SafeArray* array, size_t elementIndex, const v
 Errors getValueFromSafeArrayElement(const SafeArray* array, size_t elementIndex, void* element);
 Errors resizeSafeArray(SafeArray* array, size_t newSize);
 Errors dumpArrayLog(const SafeArray* array);
-Errors isSafeArrayValid(const SafeArray* array, bool* isValid);
+Errors isSafeArrayValid(const SafeArray* array);
 Errors  destructSafeArray(SafeArray* array);
 
 #endif

@@ -185,14 +185,10 @@ Errors pushElementToStack(Stack* stack, const void* elementVoidPtr) {
 
 Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
     uint8_t* element = (uint8_t*)elementVoidPtr;
-    // LOG_DEBUG_VARS(element);
 
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(element);
     RETURN_IF_INVALID(stack);
-
-    // IF_NOT_COND_RETURN(stack->array.array != NULL,
-    //                    ERROR_STACK_INVALID_FIELD_VALUES);
 
     Errors error = reallocateStackArrIfNeeded(stack);
     IF_ERR_RETURN(error);
@@ -214,6 +210,7 @@ Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
 
 //  -----------------------------       CHECK IF STACK IS VALID        ----------------------------------
 
+// ASK: or is it better to right how it's done in memorySafeArray's same function
 Errors isStackValid(const Stack* stack, bool* isValid) {
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(isValid);

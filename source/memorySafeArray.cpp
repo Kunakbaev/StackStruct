@@ -7,13 +7,8 @@
 // just in case it will colide with same define from stack lib
 #define RETURN_IF_ARR_INVALID(array)                            \
     do {                                                        \
-        bool isValid = false;                                   \
-        Errors errorTmp = isSafeArrayValid(array, &isValid);    \
+        Errors errorTmp = isSafeArrayValid(array);              \
         IF_ERR_RETURN(errorTmp);                                \
-        if (!isValid) {                                         \
-            IF_ERR_RETURN(ERROR_STACK_INVALID_FIELD_VALUES);    \
-            /*assert(false);                                 */ \
-        }                                                       \
     } while (0)
 
 const size_t MAX_ARRAY_SIZE                = 1 << 13;
@@ -28,9 +23,10 @@ char* buffForByte                          = "";
 // TODO: return dynamic seed
 std::mt19937_64 rnd2(228);
 
-const uint64_t BASE_NUMBER_FOR_HASHES        = rnd2() >> 32; // ???
+const uint64_t BASE_NUMBER_FOR_HASHES      = rnd2() >> 32; // ???
 
 // these are consts
+// ASK: how to make them really const?
 uint8_t FRONT_CANARY[SIZE_OF_CANARY];
 uint8_t BACK_CANARY[SIZE_OF_CANARY];
 
@@ -49,23 +45,17 @@ Errors myMemCopy(void* destVoidPtr, const void* sourceVoidPtr, size_t memToCopy)
     IF_ARG_NULL_RETURN(source);
 
     memcpy(dest, source, memToCopy);
-    // for (size_t byteInd = 0; byteInd < memToCopy; ++byteInd) {
-    //     dest[byteInd] = source[byteInd];
-    // }
 
     return STATUS_OK;
 }
 
+// setting front and back canaries
 Errors setCanariesForSafeArray(const SafeArray* array) {
-    // setting front and back canaries
     Errors error = STATUS_OK;
 
     // TODO: don't do this if new size is same as previous
-    //if (array->arraySize == 0) {
     error = myMemCopy(array->array, FRONT_CANARY, array->elementSize);
     IF_ERR_RETURN(error);
-
-    //}
 
     size_t backCanaryIndex = SIZE_OF_CANARY + array->elementSize * array->arraySize;
     error = myMemCopy(array->array + backCanaryIndex, BACK_CANARY, SIZE_OF_CANARY);
@@ -77,12 +67,13 @@ Errors setCanariesForSafeArray(const SafeArray* array) {
 
 //  -----------------------------       FUNCTIONS FOR HASHES        ----------------------------------
 
-static Errors addNumToHash(uint64_t* stackHash, const uint64_t* number) {
-    IF_ARG_NULL_RETURN(stackHash);
+// maybe should add module by some random number, it will be safer, but slower
+static Errors addNumToHash(uint64_t* arrayHash, const uint64_t* number) {
+    IF_ARG_NULL_RETURN(arrayHash);
     IF_ARG_NULL_RETURN(number);
 
-    *stackHash *= BASE_NUMBER_FOR_HASHES;
-    *stackHash += *number + 1;
+    *arrayHash *= BASE_NUMBER_FOR_HASHES;
+    *arrayHash += *number + 1;
 
     return STATUS_OK;
 }
@@ -101,8 +92,6 @@ static Errors getHashOfArray(const SafeArray* array, uint64_t* arrayHash) {
     IF_ERR_RETURN(err);
 
     for (size_t byteInd = 0; byteInd < array->arraySize * array->elementSize; ++byteInd) {
-        // IF_NOT_COND_RETURN(byteInd < stack->array.arraySize,
-        //                    ERROR_ARRAY_BAD_INDEX);
         err = addNumToHash(arrayHash, (uint64_t*)&array->array[byteInd]);
         IF_ERR_RETURN(err);
     }
@@ -112,7 +101,6 @@ static Errors getHashOfArray(const SafeArray* array, uint64_t* arrayHash) {
 
 static Errors recalculateHashOfArray(SafeArray* array) {
     IF_ARG_NULL_RETURN(array);
-    // RETURN_IF_INVALID(stack);
 
     Errors err = getHashOfArray(array, &array->structHash);
     IF_ERR_RETURN(err);
@@ -126,7 +114,7 @@ static Errors recalculateHashOfArray(SafeArray* array) {
 Errors constructSafeArray(size_t arraySize, size_t elementSize, SafeArray* array) {
     IF_ARG_NULL_RETURN(array);
 
-    *array = {};
+    *array             = {};
     array->elementSize = elementSize;
     array->array       = NULL;
 
@@ -150,8 +138,11 @@ Errors constructSafeArray(size_t arraySize, size_t elementSize, SafeArray* array
     IF_NOT_COND_RETURN(buffForByte != NULL,
                        ERROR_MEMORY_ALLOCATION_ERROR);
 
+#ifdef IS_HASH_MEMORY_CHECK_DEFINE
     error = recalculateHashOfArray(array);
     IF_ERR_RETURN(error);
+#endif
+
     RETURN_IF_ARR_INVALID(array);
 
     return STATUS_OK;
@@ -161,7 +152,7 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     LOG_DEBUG_VARS(array);
     IF_ARG_NULL_RETURN(array);
     IF_NOT_COND_RETURN(newSize < MAX_ARRAY_SIZE,
-                       ERROR_STACK_NEW_CAPACITY_TOO_BIG);
+                       ERROR_ARRAY_NEW_ARRAY_SIZE_IS_TOO_BIG);
     RETURN_IF_ARR_INVALID(array);
 
     // nothing to do
@@ -176,8 +167,6 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     size_t oldSize = array->arraySize;
     array->arraySize = newSize;
 
-    LOG_DEBUG_VARS(oldSize, newSize, newNumOfBytes, array->array);
-
     if (newSize > oldSize) {
         size_t deltaBytes = (newSize - oldSize) * array->elementSize;
         memset(array->array + oldSize + SIZE_OF_CANARY, 0, deltaBytes);
@@ -189,8 +178,11 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     IF_ERR_RETURN(error);
 #endif
 
+#ifdef IS_HASH_MEMORY_CHECK_DEFINE
     error = recalculateHashOfArray(array);
     IF_ERR_RETURN(error);
+#endif
+
     RETURN_IF_ARR_INVALID(array);
 
     return STATUS_OK;
@@ -204,13 +196,16 @@ Errors setValueToSafeArrayElement(SafeArray* array, size_t elementIndex, const v
 
     // FIXME: change to array errors
     IF_NOT_COND_RETURN(elementIndex < array->arraySize,
-                       ERROR_STACK_INCORRECT_NUM_OF_ELEMS);
+                       ERROR_ARRAY_BAD_INDEX);
 
     int arrInd = SIZE_OF_CANARY + elementIndex * array->elementSize;
     Errors error = myMemCopy(array->array + arrInd, elementVoidPtr, array->elementSize);
 
+#ifdef IS_HASH_MEMORY_CHECK_DEFINE
     error = recalculateHashOfArray(array);
     IF_ERR_RETURN(error);
+#endif
+
     RETURN_IF_ARR_INVALID(array);
 
     return error;
@@ -221,6 +216,9 @@ Errors getValueFromSafeArrayElement(const SafeArray* array, size_t elementIndex,
     IF_ARG_NULL_RETURN(array->array);
     IF_ARG_NULL_RETURN(elementVoidPtr);
     RETURN_IF_ARR_INVALID(array);
+
+    IF_NOT_COND_RETURN(elementIndex < array->arraySize,
+                       ERROR_ARRAY_BAD_INDEX);
 
     int arrInd = SIZE_OF_CANARY + elementIndex * array->elementSize;
     Errors error = myMemCopy(elementVoidPtr, array->array + arrInd, array->elementSize);
@@ -235,7 +233,7 @@ Errors getValueFromSafeArrayElement(const SafeArray* array, size_t elementIndex,
 static Errors logStackElement(const uint8_t* element, size_t elementSize) {
     IF_ARG_NULL_RETURN(element);
     IF_NOT_COND_RETURN(elementSize < MAX_ARRAY_ELEM_SIZE,
-                       ERROR_STACK_ELEM_SIZE_TOO_BIG);
+                       ERROR_ARRAY_SIZE_IS_TOO_BIG);
 
     memset(bufferToOutputStackElems, 0, LOG_BUFFER_SIZE);
     for (size_t byteInd = 0; byteInd < elementSize; ++byteInd) {
@@ -273,14 +271,13 @@ Errors dumpArrayLog(const SafeArray* array) {
     return STATUS_OK;
 }
 
-Errors isSafeArrayValid(const SafeArray* array, bool* isValid) {
+// ASK: maybe it's better to do like it's done in stack, with bool* isValid
+Errors isSafeArrayValid(const SafeArray* array) {
     IF_ARG_NULL_RETURN(array);
-
-    *isValid = true;
-    *isValid &= array->arraySize == 0 || array->array != NULL;
-    *isValid &= array->arraySize <  MAX_ARRAY_SIZE;
-    if (!*isValid)
-        return STATUS_OK;
+    IF_NOT_COND_RETURN(array->arraySize == 0 || array->array != NULL,
+                       ERROR_ARRAY_SIZE_EMPTY_ARRAY_NOT_ZERO_SIZE);
+    IF_NOT_COND_RETURN(array->arraySize <= MAX_ARRAY_SIZE,
+                       ERROR_ARRAY_SIZE_IS_TOO_BIG);
     if (array->array == NULL)
         return STATUS_OK;
 
@@ -293,15 +290,12 @@ Errors isSafeArrayValid(const SafeArray* array, bool* isValid) {
 
     int cmpResultFrontStruct = memcmp(array->frontCanary, FRONT_CANARY, SIZE_OF_CANARY);
     int cmpResultBackStruct  = memcmp(array->backCanary,  BACK_CANARY,  SIZE_OF_CANARY);
-    LOG_DEBUG_VARS(array->frontCanary[0], FRONT_CANARY);
-    LOG_DEBUG_VARS(cmpResultFront, cmpResultBack);
-    LOG_DEBUG_VARS(cmpResultFrontStruct, cmpResultBackStruct);
-    if (cmpResultFront != 0 || cmpResultBack != 0 ||
-            cmpResultFrontStruct != 0 || cmpResultBackStruct != 0) {
-        LOG_ERROR("Error: canary protection failed.\n");
-        *isValid = false;
-        return STATUS_OK;
-    }
+    // LOG_DEBUG_VARS(array->frontCanary[0], FRONT_CANARY);
+    // LOG_DEBUG_VARS(cmpResultFront, cmpResultBack);
+    // LOG_DEBUG_VARS(cmpResultFrontStruct, cmpResultBackStruct);
+    IF_NOT_COND_RETURN(cmpResultFront       == 0 && cmpResultBack       == 0 &&
+                       cmpResultFrontStruct == 0 && cmpResultBackStruct == 0,
+                       ERROR_ARRAY_CANARY_PROTECTION_FAILED);
 #endif
 
 #ifdef IS_HASH_MEMORY_CHECK_DEFINE
@@ -312,7 +306,7 @@ Errors isSafeArrayValid(const SafeArray* array, bool* isValid) {
     LOG_DEBUG_VARS(correctArrayHash, array->structHash);
     IF_ERR_RETURN(err);
     IF_NOT_COND_RETURN(correctArrayHash == array->structHash,
-                       ERROR_STACK_MEMORY_HASH_CHECK_FAILED);
+                       ERROR_ARRAY_MEMORY_HASH_CHECK_FAILED);
 #endif
 
     return STATUS_OK;

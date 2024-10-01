@@ -43,8 +43,8 @@ Errors testSafeArray() {
     error = setValueToSafeArrayElement(&array, 0, &num);
     IF_ERR_RETURN(error);
 
-    uint8_t* ptr = (uint8_t*)array.array + 9;
-    *ptr = 18929232;
+    // uint8_t* ptr = (uint8_t*)array.array + 9;
+    // *ptr = 18929232;
 
     error = dumpArrayLog(&array);
     IF_ERR_RETURN(error);
