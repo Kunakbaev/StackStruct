@@ -29,6 +29,11 @@ const char* getErrorMessage(Errors error) {
             return "Error: hash of stack structure memory is not correct, stack smash or other error has occured.\n";
         case ERROR_STACK_CANARY_PROTECTION_FAILED:
             return "Error: canary protection failed with stack struct.\n";
+        case ERROR_STACK_ARRAY_SIZE_IS_TOO_BIG:
+            return "Error: size of stack array is too big.\n";
+        case ERROR_STACK_INVALID_NUM_OF_ELEMS:
+            return "Error: number of elements in stack is either too small (<0) or too big(>capacity)";
+
 
         case ERROR_ARRAY_INVALID_FIELD_VALUES:
             return "Error: some of array fields are invalid.\n";

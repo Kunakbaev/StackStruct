@@ -15,8 +15,8 @@ const size_t MAX_ARRAY_SIZE      = 1 << 13;
 const size_t MAX_ARRAY_ELEM_SIZE = 32;
 
 const size_t LOG_BUFFER_SIZE               = 200;
-char* bufferToOutputStackElems             = "";
-char* buffForByte                          = "";
+char* bufferToOutputStackElems             = {};
+char* buffForByte                          = {};
 
 //std::mt19937_64 rnd2(std::chrono::steady_clock::now().time_since_epoch().count());
 // easier for debug with constant seed
@@ -246,7 +246,8 @@ static Errors logStackElement(const uint8_t* element, size_t elementSize) {
     memset(bufferToOutputStackElems, 0, LOG_BUFFER_SIZE);
     for (size_t byteInd = 0; byteInd < elementSize; ++byteInd) {
         uint8_t elem = *(element + byteInd);
-        sprintf(buffForByte, "%p ", elem);
+        // FIXME: output
+        sprintf(buffForByte, "%zx ", (size_t)elem);
         strcat(bufferToOutputStackElems, buffForByte);
     }
     LOG_DEBUG(bufferToOutputStackElems);
@@ -279,6 +280,7 @@ Errors dumpArrayLog(const SafeArray* array) {
     return STATUS_OK;
 }
 
+// TODO: additional call of this function in stack
 // ASK: maybe it's better to do like it's done in stack, with bool* isValid
 Errors isSafeArrayValid(const SafeArray* array) {
     IF_ARG_NULL_RETURN(array);

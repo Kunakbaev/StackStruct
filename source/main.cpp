@@ -1,6 +1,7 @@
 #include <iostream>
 #include <math.h>
 
+// remove warnings via #pragma GCC diagnostics ignored "WARN TO BE IGNORED format non literal"
 #include "../LoggerLib/include/logLib.hpp"
 
 // doesn't work

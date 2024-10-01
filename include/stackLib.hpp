@@ -32,7 +32,7 @@ struct Stack {
 Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize);
 Errors pushElementToStack(Stack* stack, const void* element);
 Errors popElementToStack(Stack* stack, void* element);
-Errors isStackValid(const Stack* stack, bool* isValid);
+Errors isStackValid(const Stack* stack);
 Errors dumpStackLog(const Stack* stack);
 Errors destructStack(Stack* stack);
 

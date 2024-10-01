@@ -6,13 +6,8 @@
 
 #define RETURN_IF_INVALID(stack)                                \
     do {                                                        \
-        bool isValid = false;                                   \
-        Errors errorTmp = isStackValid(stack, &isValid);        \
+        Errors errorTmp = isStackValid(stack);                  \
         IF_ERR_RETURN(errorTmp);                                \
-        if (!isValid) {                                         \
-            IF_ERR_RETURN(ERROR_STACK_INVALID_FIELD_VALUES);    \
-            /*assert(false);                                 */ \
-        }                                                       \
     } while (0)
 
 
@@ -87,6 +82,8 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
     IF_NOT_COND_RETURN(initialCapacity <  MAX_STACK_CAPACITY,
                        ERROR_INVALID_ARGUMENT);
 
+    LOG_INFO("constructing stack");
+
     stack->frontCanary      = FRONT_CANARY;
     stack->backCanary       = BACK_CANARY;
     stack->numberOfElements = 0;
@@ -104,10 +101,6 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
 
 //  -----------------------------       MEMORY MANAGMENT        ----------------------------------
 
-static double sq(double x) {
-    return x * x;
-}
-
 static Errors reallocateMemoryForStackIfNeeded(Stack* stack, int newCapacity) {
     IF_ARG_NULL_RETURN(stack);
     IF_NOT_COND_RETURN(REALLOC_SIZE_KOEF >= MIN_REALLOC_SIZE_KOEF,
@@ -124,14 +117,19 @@ static Errors reallocateMemoryForStackIfNeeded(Stack* stack, int newCapacity) {
     return error;
 }
 
+static double squareNumber(double x) {
+    return x * x;
+}
+
 static Errors reallocateStackArrIfNeeded(Stack* stack) {
     IF_ARG_NULL_RETURN(stack);
     IF_NOT_COND_RETURN(REALLOC_SIZE_KOEF >= MIN_REALLOC_SIZE_KOEF,
                        ERROR_STACK_INCORRECT_CAP_KOEF);
 
     // there are too many unused elements in stack
-    int stackCapacity = stack->array.arraySize;
-    int newCapacityLess = roundl(stackCapacity / sq(REALLOC_SIZE_KOEF));
+    // FIXME: rename sq
+    size_t stackCapacity = stack->array.arraySize;
+    int newCapacityLess = roundl(stackCapacity / squareNumber(REALLOC_SIZE_KOEF));
     // we need more elements, so we will make capacity of stack multiplied by some constant
     int newCapacityMore = roundl(stackCapacity * REALLOC_SIZE_KOEF);
 
@@ -212,38 +210,37 @@ Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
 
 //  -----------------------------       CHECK IF STACK IS VALID        ----------------------------------
 
-// ASK: or is it better to right how it's done in memorySafeArray's same function
-Errors isStackValid(const Stack* stack, bool* isValid) {
+Errors isStackValid(const Stack* stack) {
     IF_ARG_NULL_RETURN(stack);
-    IF_ARG_NULL_RETURN(isValid);
-
-    *isValid  = true;
 
 #ifdef IS_CANARY_PROTECTION_ON
     // stack smash attack (or just error) from one of the ends of struct
-    if (stack->frontCanary != FRONT_CANARY ||
-        stack->backCanary  !=  BACK_CANARY) {
-        LOG_ERROR("Error: canary protection failed.\n");
-        *isValid = false;
-        return STATUS_OK;
-    }
+    IF_NOT_COND_RETURN(stack->frontCanary == FRONT_CANARY &&
+                       stack->backCanary  ==  BACK_CANARY,
+                       ERROR_STACK_CANARY_PROTECTION_FAILED);
 #endif
 
-    *isValid &= stack->array.elementSize   <  MAX_STACK_ELEM_SIZE;
-    *isValid &= stack->array.elementSize   >  0;
-    *isValid &= stack->numberOfElements    >= 0;
-    *isValid &= stack->numberOfElements    <= stack->array.arraySize;
-    *isValid &= stack->array.array != NULL || stack->numberOfElements == 0;
-    if (!(*isValid))
-        return STATUS_OK;
+    IF_NOT_COND_RETURN(stack->array.elementSize   <  MAX_STACK_ELEM_SIZE,
+                       ERROR_STACK_ARRAY_SIZE_IS_TOO_BIG);
+    IF_NOT_COND_RETURN(stack->array.elementSize > 0,
+                       ERROR_STACK_ELEM_SIZE_TOO_SMALL);
+    IF_NOT_COND_RETURN(stack->array.elementSize < MAX_STACK_ELEM_SIZE,
+                       ERROR_STACK_ELEM_SIZE_TOO_BIG);
+    IF_NOT_COND_RETURN(stack->numberOfElements >= 0 ||
+                       stack->numberOfElements < stack->array.arraySize,
+                       ERROR_STACK_INVALID_NUM_OF_ELEMS);
+    IF_NOT_COND_RETURN(stack->array.arraySize == 0 || stack->array.array != NULL,
+                       ERROR_ARRAY_SIZE_EMPTY_ARRAY_NOT_ZERO_SIZE);
+    Errors error = isSafeArrayValid(&stack->array);
+    IF_ERR_RETURN(error);
 
 #ifdef IS_HASH_MEMORY_CHECK_DEFINE
     uint64_t correctHashStack = 0;
-    Errors err = getHashOfStack(stack, &correctHashStack);
-    IF_ERR_RETURN(err);
+    error = getHashOfStack(stack, &correctHashStack);
+    IF_ERR_RETURN(error);
 
     // LOG_DEBUG_VARS(correctHashStack, stack->structHash);
-    IF_ERR_RETURN(err);
+    IF_ERR_RETURN(error);
     IF_NOT_COND_RETURN(correctHashStack == stack->structHash,
                        ERROR_STACK_MEMORY_HASH_CHECK_FAILED);
 #endif
@@ -264,10 +261,8 @@ Errors dumpStackLog(const Stack* stack) {
     LOG_DEBUG_VARS(stack->array.arraySize);
     LOG_DEBUG_VARS(stack->structHash);
 
-    // TODO: dump array
     Errors error = dumpArrayLog(&stack->array);
     IF_ERR_RETURN(error);
-    LOG_DEBUG("--------------------------------------");
 
     // just in case, maybe too paranoid
     RETURN_IF_INVALID(stack);
@@ -284,7 +279,7 @@ Errors destructStack(Stack* stack) {
 
     RETURN_IF_INVALID(stack);
 
-    LOG_DEBUG("destrucing stack");
+    LOG_INFO("destructing stack");
     Errors error = destructSafeArray(&stack->array);
     IF_ERR_RETURN(error);
 
