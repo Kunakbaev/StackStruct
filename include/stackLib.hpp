@@ -6,11 +6,8 @@
 #include "errorsHandler.hpp"
 #include "memorySafeArray.hpp"
 
-// #ifdef HASH_MEMORY_CHECK_DEFINE
-// #define IS_HASH_MEMORY_CHECK_DEFINE
-// #endif
-
-// #define IS_HASH_MEMORY_CHECK_DEFINE
+#define IS_HASH_MEMORY_CHECK_DEFINE
+#define IS_CANARY_PROTECTION_ON
 
 // enum StackError {
 //     ERROR_STACK_INVALID_FIELD_VALUES        = 4,                  // some of stack fields are invalid

@@ -22,7 +22,7 @@ const char* getErrorMessage(Errors error) {
         case ERROR_STACK_INCORRECT_CAP_KOEF:
             return "Error: incorrect capacity change koefficient.\n";
         case ERROR_STACK_MEMORY_HASH_CHECK_FAILED:
-            return "Error: hashes not equal.\n";
+            return "Error: hash of structure memory is not correct, stack smash or other error has occured.\n";
         case ERROR_STACK_ELEM_SIZE_TOO_SMALL:
             return "Error: size of stack element is too small (possibly set to 0).\n";
         case ERROR_STACK_ELEM_SIZE_TOO_BIG:

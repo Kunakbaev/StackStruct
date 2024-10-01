@@ -19,7 +19,7 @@
 // beware strings of Tue a Morse
 std::mt19937_64 rnd(std::chrono::steady_clock::now().time_since_epoch().count());
 
-const uint64_t RAND_NUMBER_FOR_HASHES        = rnd();
+// const uint64_t RAND_NUMBER_FOR_HASHES        = rnd();
 const uint64_t BASE_NUMBER_FOR_HASHES        = rnd() >> 32; // ???
 
 const uint64_t FRONT_CANARY                  = rnd();
@@ -55,20 +55,12 @@ static Errors getHashOfStack(const Stack* stack, uint64_t* stackHash) {
     Errors err = STATUS_OK;
     err = addNumToHash(stackHash, (uint64_t*)&stack->numberOfElements);
     IF_ERR_RETURN(err);
-    addNumToHash(stackHash,       (uint64_t*)&stack->array.arraySize);
+    err = addNumToHash(stackHash,       (uint64_t*)&stack->array.arraySize);
     IF_ERR_RETURN(err);
-    addNumToHash(stackHash,       (uint64_t*)&stack->array.array); // address of a pointer
+    err = addNumToHash(stackHash,       (uint64_t*)&stack->array.array); // address of a pointer
     IF_ERR_RETURN(err);
-
-    // FIXME: not appropriate to do like so
-    for (size_t byteInd = 0; byteInd < stack->numberOfElements * stack->array.elementSize; ++byteInd) {
-        LOG_DEBUG_VARS(byteInd, stack->array.arraySize, stack->array.elementSize);
-        LOG_DEBUG_VARS(stack->numberOfElements);
-        // IF_NOT_COND_RETURN(byteInd < stack->array.arraySize,
-        //                    ERROR_ARRAY_BAD_INDEX);
-        err = addNumToHash(stackHash, (uint64_t*)&stack->array.array[byteInd]);
-        IF_ERR_RETURN(err);
-    }
+    err = addNumToHash(stackHash,       (uint64_t*)&stack->array.structHash);
+    IF_ERR_RETURN(err);
 
     return STATUS_OK;
 }

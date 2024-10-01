@@ -6,17 +6,28 @@
 #include "errorsHandler.hpp"
 
 #define IS_CANARY_PROTECTION_ON
+#define IS_HASH_MEMORY_CHECK_DEFINE
 
 // TODO: add ifndef canary protection, then size_of_canary = 0
+#ifdef IS_CANARY_PROTECTION_ON
 const size_t SIZE_OF_CANARY = 4;
+#else
+const size_t SIZE_OF_CANARY = 0;
+#endif
 
 static_assert(SIZE_OF_CANARY < 32);
 
+// TODO: dynamic array for canaries??
 struct SafeArray {
+    uint8_t frontCanary[SIZE_OF_CANARY];
+
     size_t   arraySize; // actual number of elements
     // (also we have 2 additional elements -> canary in the front, and in the back
     uint8_t* array;
+    uint64_t structHash;
     size_t   elementSize;
+
+    uint8_t backCanary[SIZE_OF_CANARY];
 };
 
 // TODO: add function to dump (log) array

@@ -17,11 +17,11 @@ int main() {
     setLoggingLevel(DEBUG);
 
     Errors error = STATUS_OK;
-    // error = testSafeArray();
-    // IF_ERR_RETURN(error);
-
-    error = testStack();
+    error = testSafeArray();
     IF_ERR_RETURN(error);
+
+    // error = testStack();
+    // IF_ERR_RETURN(error);
 
     return 0;
 }
@@ -40,11 +40,11 @@ Errors testSafeArray() {
     //ptr
 
     int num = 10;
-    error = setValueToSafeArrayElement(&array, 1, &num);
+    error = setValueToSafeArrayElement(&array, 0, &num);
     IF_ERR_RETURN(error);
 
-    // uint8_t* ptr = (uint8_t*)array.array;
-    // *ptr = 0;
+    uint8_t* ptr = (uint8_t*)array.array + 9;
+    *ptr = 18929232;
 
     error = dumpArrayLog(&array);
     IF_ERR_RETURN(error);
