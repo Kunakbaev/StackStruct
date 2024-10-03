@@ -75,7 +75,7 @@ static Errors getHashOfArray(const SafeArray* array, HASH_DATA_TYPE* arrayHash) 
     // and also that's a new information for me
     *arrayHash = 0;
 
-    size_t bytesBeforeHash = OFFSET_OF_FIELD(SafeArray, structHash);
+    size_t bytesBeforeHash = OFFSET_OF_FIELD_I_COPIED_IT_FROM_WIKIPEDIA(SafeArray, structHash);
     //LOG_DEBUG_VARS(bytesBeforeHash);
 
     HASH_DATA_TYPE firstHalf  = 0;

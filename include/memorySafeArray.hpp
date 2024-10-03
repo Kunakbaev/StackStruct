@@ -6,8 +6,8 @@
 #include "errorsHandler.hpp"
 #include "../include/randomLib.hpp"
 
-#define IS_CANARY_PROTECTION_ON
-#define IS_HASH_MEMORY_CHECK_DEFINE
+// #define IS_CANARY_PROTECTION_ON
+// #define IS_HASH_MEMORY_CHECK_DEFINE
 
 // TODO: add ifndef canary protection, then size_of_canary = 0
 // FIXME: does it work? seems so
@@ -24,11 +24,11 @@ static_assert(SIZE_OF_CANARY < 32);
 struct SafeArray {
     uint8_t frontCanary[SIZE_OF_CANARY];
 
-    size_t   arraySize; // actual number of elements
+    size_t arraySize; // actual number of elements
     // (also we have 2 additional elements -> canary in the front, and in the back
     uint8_t* array;
     HASH_DATA_TYPE structHash;
-    size_t   elementSize;
+    size_t  elementSize;
 
     uint8_t backCanary[SIZE_OF_CANARY];
 };

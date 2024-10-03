@@ -13,16 +13,18 @@
         }                                                           \
     } while(0)
 
-#define IF_NOT_COND_RETURN(condition, error)                   \
+#define IF_NOT_COND_RETURN(condition, error)                        \
     do {                                                            \
-        if (!(condition)) {                                         \
+        bool tmpCondition = (condition);                            \
+        if (!tmpCondition) {                                        \
             LOG_ERROR(getErrorMessage(error));                      \
-            assert(condition);                                      \
+            assert(tmpCondition);                                   \
             return error;                                           \
         }                                                           \
     } while(0)
 
-#define IF_ARG_NULL_RETURN(arg)                                \
+// ASK: should I create tmp variable for this case too?
+#define IF_ARG_NULL_RETURN(arg)                                     \
     do {                                                            \
         if (arg == NULL) {                                          \
             LOG_ERROR(getErrorMessage(ERROR_INVALID_ARGUMENT));     \
@@ -31,6 +33,7 @@
         }                                                           \
     } while (0)
 
+// ASK: how to rewrite this enum, so errors are distributed among modules
 enum Errors {
     //  --------------------------      GENERAL ERRORS          -----------------------------
     STATUS_OK                                   = 0,                  // no error, everything is valid

@@ -95,8 +95,8 @@ Errors testStack() {
     }
 
     uint8_t* ptr = (uint8_t*)stack.array.array;
-    //*ptr = 19290;
-    //*(ptr + 3) = 102;
+    *ptr = 19290;
+    *(ptr + 3) = 102;
 
     LOG_DEBUG("------------ popping elements --------------");
     // return 0;

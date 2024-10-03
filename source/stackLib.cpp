@@ -38,7 +38,7 @@ static Errors getHashOfStack(const Stack* stack, HASH_DATA_TYPE* stackHash) {
     // and also that's a new information for me
     *stackHash = 0;
 
-    size_t bytesBeforeHash = OFFSET_OF_FIELD(Stack, structHash);
+    size_t bytesBeforeHash = OFFSET_OF_FIELD_I_COPIED_IT_FROM_WIKIPEDIA(Stack, structHash);
     LOG_DEBUG_VARS(bytesBeforeHash);
 
     HASH_DATA_TYPE firstHalf  = 0;
