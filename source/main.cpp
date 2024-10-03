@@ -38,14 +38,14 @@ Errors testSafeArray() {
 
     error = constructSafeArray(10, 4, &array);
     IF_ERR_RETURN(error);
-    //ptr
+
+    // uint8_t* ptr = (uint8_t*)(array.array);
+    // *(ptr + 5) = 18929232;
+    // LOG_DEBUG("--------------------------------------");
 
     int num = 10;
     error = setValueToSafeArrayElement(&array, 0, &num);
     IF_ERR_RETURN(error);
-
-    // uint8_t* ptr = (uint8_t*)array.array + 9;
-    // *ptr = 18929232;
 
     error = dumpArrayLog(&array);
     IF_ERR_RETURN(error);
@@ -69,11 +69,13 @@ Errors testStack() {
     // if stack parametre is void*, then user doesn't know about fields of Stack struct???
     error = constructStack(&stack, 0, 4);
     IF_ERR_RETURN(error);
+    LOG_DEBUG("main");
 
     // uint8_t* ptr = (uint8_t*)stack.array.array;
-    // //*ptr = 19290;
-    // *(ptr + 1) = 102;
+    // *(ptr) = 190;
+    //*(ptr + 1) = 102;
 
+    LOG_DEBUG("be");
     dumpStackLog(&stack);
     LOG_DEBUG("ok");
 
@@ -86,15 +88,15 @@ Errors testStack() {
         LOG_DEBUG_VARS(i, number, error);
         IF_ERR_RETURN(error);
 
-        //stack.numberOfElements = 0;
-        //stack.stackCapacity = 0;
-        //stack.array = NULL;
+        // stack.numberOfElements = 0;
+        // stack.stackCapacity = 0;
+        // stack.array = NULL;
         dumpStackLog(&stack);
     }
 
     uint8_t* ptr = (uint8_t*)stack.array.array;
     //*ptr = 19290;
-    //*(ptr + 19) = 102;
+    //*(ptr + 3) = 102;
 
     LOG_DEBUG("------------ popping elements --------------");
     // return 0;

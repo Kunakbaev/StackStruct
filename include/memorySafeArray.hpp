@@ -4,6 +4,7 @@
 #include <inttypes.h>
 
 #include "errorsHandler.hpp"
+#include "../include/randomLib.hpp"
 
 #define IS_CANARY_PROTECTION_ON
 #define IS_HASH_MEMORY_CHECK_DEFINE
@@ -26,7 +27,7 @@ struct SafeArray {
     size_t   arraySize; // actual number of elements
     // (also we have 2 additional elements -> canary in the front, and in the back
     uint8_t* array;
-    uint64_t structHash;
+    HASH_DATA_TYPE structHash;
     size_t   elementSize;
 
     uint8_t backCanary[SIZE_OF_CANARY];

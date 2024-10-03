@@ -5,6 +5,7 @@
 
 #include "errorsHandler.hpp"
 #include "memorySafeArray.hpp"
+#include "../include/randomLib.hpp"
 
 #define IS_HASH_MEMORY_CHECK_DEFINE
 #define IS_CANARY_PROTECTION_ON
@@ -20,16 +21,16 @@
 // };
 
 struct Stack {
-    uint64_t frontCanary;
+    HASH_DATA_TYPE frontCanary;
 
-    uint64_t structHash;
-    int numberOfElements;
+    HASH_DATA_TYPE structHash;
+    size_t numberOfElements;
     SafeArray array;
 
-    uint64_t backCanary;
+    HASH_DATA_TYPE backCanary;
 };
 
-Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize);
+Errors constructStack(Stack* stack, size_t initialCapacity, size_t stackElemSize);
 Errors pushElementToStack(Stack* stack, const void* element);
 Errors popElementToStack(Stack* stack, void* element);
 Errors isStackValid(const Stack* stack);

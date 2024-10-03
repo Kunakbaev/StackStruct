@@ -10,15 +10,10 @@
         IF_ERR_RETURN(errorTmp);                                \
     } while (0)
 
+const HASH_DATA_TYPE BASE_NUMBER_FOR_HASHES        = getRandomUint64tNumber() >> 32; // ???
 
-// beware strings of Tue a Morse
-std::mt19937_64 rnd(std::chrono::steady_clock::now().time_since_epoch().count());
-
-// const uint64_t RAND_NUMBER_FOR_HASHES        = rnd();
-const uint64_t BASE_NUMBER_FOR_HASHES        = rnd() >> 32; // ???
-
-const uint64_t FRONT_CANARY                  = rnd();
-const uint64_t  BACK_CANARY                  = rnd();
+const HASH_DATA_TYPE FRONT_CANARY                  = getRandomUint64tNumber();
+const HASH_DATA_TYPE  BACK_CANARY                  = getRandomUint64tNumber();
 
 constexpr const size_t MAX_STACK_ELEM_SIZE   = 32;
 constexpr const size_t MIN_STACK_CAPACITY    = 8;
@@ -32,49 +27,52 @@ static_assert(REALLOC_SIZE_KOEF     > MIN_REALLOC_SIZE_KOEF);
 
 //  -----------------------------       FUNCTIONS FOR HASHES        ----------------------------------
 
-static Errors addNumToHash(uint64_t* stackHash, const uint64_t* number) {
-    IF_ARG_NULL_RETURN(stackHash);
-    IF_ARG_NULL_RETURN(number);
-
-    *stackHash *= BASE_NUMBER_FOR_HASHES;
-    *stackHash += *number + 1;
-
-    return STATUS_OK;
-}
-
-static Errors getHashOfStack(const Stack* stack, uint64_t* stackHash) {
+static Errors getHashOfStack(const Stack* stack, HASH_DATA_TYPE* stackHash) {
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(stackHash);
 
+    // ASK: I have a function that returns hash of sequence of bytes, but
+    // I don't want it to take hash into consideration
+    // I don't want to make stack argument NOT const and another option was to put
+    // structHash field to the end of structure, but OFFSET_OF_FIELD was ver interesting
+    // and also that's a new information for me
     *stackHash = 0;
-    Errors err = STATUS_OK;
-    err = addNumToHash(stackHash, (uint64_t*)&stack->numberOfElements);
-    IF_ERR_RETURN(err);
-    err = addNumToHash(stackHash, (uint64_t*)&stack->array.arraySize);
-    IF_ERR_RETURN(err);
-    err = addNumToHash(stackHash, (uint64_t*)&stack->array.array); // address of a pointer
-    IF_ERR_RETURN(err);
-    err = addNumToHash(stackHash, (uint64_t*)&stack->array.structHash);
-    IF_ERR_RETURN(err);
+
+    size_t bytesBeforeHash = OFFSET_OF_FIELD(Stack, structHash);
+    LOG_DEBUG_VARS(bytesBeforeHash);
+
+    HASH_DATA_TYPE firstHalf  = 0;
+    HASH_DATA_TYPE secondHalf = 0;
+    Errors error = STATUS_OK;
+    error = getHashOfSequenceOfBytes(stack, bytesBeforeHash, &firstHalf);
+    IF_ERR_RETURN(error);
+    error = getHashOfSequenceOfBytes(stack + bytesBeforeHash + sizeof(stack->structHash),
+                                     bytesBeforeHash, &secondHalf);
+    IF_ERR_RETURN(error);
+    LOG_DEBUG_VARS(firstHalf, secondHalf);
+    *stackHash = firstHalf * secondHalf; // multipilication with overflow
+    //*stackHash = firstHalf ^ secondHalf;
 
     return STATUS_OK;
 }
 
 static Errors recalculateHashOfStack(Stack* stack) {
     IF_ARG_NULL_RETURN(stack);
-    // RETURN_IF_INVALID(stack);
 
     Errors err = getHashOfStack(stack, &stack->structHash);
     IF_ERR_RETURN(err);
+
+    // ASK: should I check that array hash is good here too?
+    // Errors err = getHashOfArray();
 
     return STATUS_OK;
 }
 
 //  -----------------------------       STACK CONSTRUCTOR        ----------------------------------
 
-Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
+Errors constructStack(Stack* stack, size_t initialCapacity, size_t stackElemSize) {
     IF_ARG_NULL_RETURN(stack);
-    IF_NOT_COND_RETURN(initialCapacity >= 0, ERROR_INVALID_ARGUMENT);
+    //IF_NOT_COND_RETURN(initialCapacity >= 0, ERROR_INVALID_ARGUMENT);
     IF_NOT_COND_RETURN(stackElemSize   >  0, ERROR_STACK_ELEM_SIZE_TOO_SMALL);
     LOG_DEBUG_VARS(stackElemSize);
     IF_NOT_COND_RETURN(stackElemSize   <= MAX_STACK_ELEM_SIZE,
@@ -101,7 +99,7 @@ Errors constructStack(Stack* stack, int initialCapacity, size_t stackElemSize) {
 
 //  -----------------------------       MEMORY MANAGMENT        ----------------------------------
 
-static Errors reallocateMemoryForStackIfNeeded(Stack* stack, int newCapacity) {
+static Errors reallocateMemoryForStackIfNeeded(Stack* stack, size_t newCapacity) {
     IF_ARG_NULL_RETURN(stack);
     IF_NOT_COND_RETURN(REALLOC_SIZE_KOEF >= MIN_REALLOC_SIZE_KOEF,
                        ERROR_STACK_INCORRECT_CAP_KOEF);
@@ -129,9 +127,9 @@ static Errors reallocateStackArrIfNeeded(Stack* stack) {
     // there are too many unused elements in stack
     // FIXME: rename sq
     size_t stackCapacity = stack->array.arraySize;
-    int newCapacityLess = roundl(stackCapacity / squareNumber(REALLOC_SIZE_KOEF));
+    size_t newCapacityLess = (size_t)roundl((long double)stackCapacity / squareNumber(REALLOC_SIZE_KOEF));
     // we need more elements, so we will make capacity of stack multiplied by some constant
-    int newCapacityMore = roundl(stackCapacity * REALLOC_SIZE_KOEF);
+    size_t newCapacityMore = (size_t)roundl((long double)stackCapacity * REALLOC_SIZE_KOEF);
 
     Errors error = STATUS_OK;
     if (stack->numberOfElements <  newCapacityLess) {
@@ -152,7 +150,7 @@ static Errors reallocateStackArrIfNeeded(Stack* stack) {
 //  -----------------------------       TWO MAIN FUNCTIONS        ----------------------------------
 
 Errors pushElementToStack(Stack* stack, const void* elementVoidPtr) {
-    uint8_t* element = (uint8_t*)elementVoidPtr;
+    const uint8_t* element = (const uint8_t*)elementVoidPtr;
 
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(element);
@@ -220,22 +218,22 @@ Errors isStackValid(const Stack* stack) {
                        ERROR_STACK_CANARY_PROTECTION_FAILED);
 #endif
 
+    LOG_DEBUG_VARS(stack->array.arraySize, stack->numberOfElements);
     IF_NOT_COND_RETURN(stack->array.elementSize   <  MAX_STACK_ELEM_SIZE,
                        ERROR_STACK_ARRAY_SIZE_IS_TOO_BIG);
     IF_NOT_COND_RETURN(stack->array.elementSize > 0,
                        ERROR_STACK_ELEM_SIZE_TOO_SMALL);
     IF_NOT_COND_RETURN(stack->array.elementSize < MAX_STACK_ELEM_SIZE,
                        ERROR_STACK_ELEM_SIZE_TOO_BIG);
-    IF_NOT_COND_RETURN(stack->numberOfElements >= 0 ||
-                       stack->numberOfElements < stack->array.arraySize,
+    IF_NOT_COND_RETURN(stack->numberOfElements  <= stack->array.arraySize,
                        ERROR_STACK_INVALID_NUM_OF_ELEMS);
-    IF_NOT_COND_RETURN(stack->array.arraySize == 0 || stack->array.array != NULL,
+    IF_NOT_COND_RETURN(stack->array.arraySize   == 0 || stack->array.array != NULL,
                        ERROR_ARRAY_SIZE_EMPTY_ARRAY_NOT_ZERO_SIZE);
     Errors error = isSafeArrayValid(&stack->array);
     IF_ERR_RETURN(error);
 
 #ifdef IS_HASH_MEMORY_CHECK_DEFINE
-    uint64_t correctHashStack = 0;
+    HASH_DATA_TYPE correctHashStack = 0;
     error = getHashOfStack(stack, &correctHashStack);
     IF_ERR_RETURN(error);
 

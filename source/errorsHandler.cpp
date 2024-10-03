@@ -34,7 +34,7 @@ const char* getErrorMessage(Errors error) {
         case ERROR_STACK_INVALID_NUM_OF_ELEMS:
             return "Error: number of elements in stack is either too small (<0) or too big(>capacity)";
 
-
+        //  ---------------------------     ARRAY ERRORS        ------------------------------
         case ERROR_ARRAY_INVALID_FIELD_VALUES:
             return "Error: some of array fields are invalid.\n";
         case ERROR_ARRAY_BAD_INDEX:
@@ -45,6 +45,12 @@ const char* getErrorMessage(Errors error) {
             return "Error: canary protection failed with array struct.\n";
         case ERROR_ARRAY_ELEMENT_SIZE_IS_TOO_BIG:
             return "Error: size of array's element is too big.\n";
+        case ERROR_ARRAY_SIZE_EMPTY_ARRAY_NOT_ZERO_SIZE:
+            return "Error: array is NULL, but it's size is greater than zero.\n";
+        case ERROR_ARRAY_SIZE_IS_TOO_BIG:
+            return "Error: array size is too big.\n";
+        case ERROR_ARRAY_NEW_ARRAY_SIZE_IS_TOO_BIG:
+            return "Error: new size for array is too big.\n";
 
         default:
             return "Unknown error.\n";
