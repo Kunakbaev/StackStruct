@@ -3,7 +3,6 @@
 
 #include "../include/memorySafeArray.hpp"
 
-// TODO: change errors to arrayErrors
 // just in case it will colide with same define from stack lib
 #define RETURN_IF_ARR_INVALID(array)                            \
     do {                                                        \
@@ -15,15 +14,27 @@ const size_t MAX_ARRAY_SIZE      = 1 << 13;
 const size_t MAX_ARRAY_ELEM_SIZE = 32;
 
 const size_t LOG_BUFFER_SIZE     = 200;
-char* bufferToOutputStackElems   = {};
-char* buffForByte                = {};
+
+// KOLYA: cppreference: extern vs static
 
 // these are consts
 // ASK: how to make them really const?
 uint8_t FRONT_CANARY[SIZE_OF_CANARY];
-uint8_t BACK_CANARY[SIZE_OF_CANARY];
+uint8_t  BACK_CANARY[SIZE_OF_CANARY];
 
+
+// TODO: singleton
+// uint8_t* GetFrontCanary()
+// uint8_t* GetBackCanary();
 static Errors initFrontAndBackCanaries() {
+//     static uint8_t FRONT_CANARY[SIZE_OF_CANARY];
+//     static uint8_t  BACK_CANARY[SIZE_OF_CANARY];
+//     static bool is_init = false;
+//
+//     if (is_init) {
+//         return FRONT_CANARY;
+//     }
+
     Errors error = STATUS_OK;
     error = fillSequenceOfBytesWithRandomValues(FRONT_CANARY, SIZE_OF_CANARY);
     IF_ERR_RETURN(error);
@@ -31,11 +42,13 @@ static Errors initFrontAndBackCanaries() {
     error = fillSequenceOfBytesWithRandomValues(BACK_CANARY,  SIZE_OF_CANARY);
     IF_ERR_RETURN(error);
 
+    //is_init = true;
+
     return STATUS_OK;
 }
 
 static Errors myMemCopy(void* destVoidPtr, const void* sourceVoidPtr, size_t memToCopy) {
-    uint8_t*       dest   = (uint8_t*)(destVoidPtr);
+    uint8_t*       dest   =       (uint8_t*)(  destVoidPtr);
     const uint8_t* source = (const uint8_t*)(sourceVoidPtr);
 
     IF_ARG_NULL_RETURN(dest);
@@ -51,7 +64,7 @@ static Errors setCanariesForSafeArray(const SafeArray* array) {
     Errors error = STATUS_OK;
 
     // TODO: don't do this if new size is same as previous
-    error = myMemCopy(array->array, FRONT_CANARY, array->elementSize);
+    error = myMemCopy(array->array, FRONT_CANARY, SIZE_OF_CANARY);
     IF_ERR_RETURN(error);
 
     size_t backCanaryIndex = SIZE_OF_CANARY + array->elementSize * array->arraySize;
@@ -64,7 +77,7 @@ static Errors setCanariesForSafeArray(const SafeArray* array) {
 
 //  -----------------------------       FUNCTIONS FOR HASHES        ----------------------------------
 
-static Errors getHashOfArray(const SafeArray* array, HASH_DATA_TYPE* arrayHash) {
+static Errors getHashOfArray(const SafeArray* array, hash_data_type* arrayHash) {
     IF_ARG_NULL_RETURN(array);
     IF_ARG_NULL_RETURN(arrayHash);
 
@@ -74,32 +87,16 @@ static Errors getHashOfArray(const SafeArray* array, HASH_DATA_TYPE* arrayHash) 
     // structHash field to the end of structure, but OFFSET_OF_FIELD was ver interesting
     // and also that's a new information for me
     *arrayHash = 0;
-
-    size_t bytesBeforeHash = OFFSET_OF_FIELD_I_COPIED_IT_FROM_WIKIPEDIA(SafeArray, structHash);
-    //LOG_DEBUG_VARS(bytesBeforeHash);
-
-    HASH_DATA_TYPE firstHalf  = 0;
-    HASH_DATA_TYPE secondHalf = 0;
-    Errors error = STATUS_OK;
-    error = getHashOfSequenceOfBytes(array, bytesBeforeHash, &firstHalf);
-    IF_ERR_RETURN(error);
-
-    size_t memSufStart = bytesBeforeHash + sizeof(array->structHash);
-    size_t bytesAfterHash = sizeof(SafeArray) - memSufStart;
-    // LOG_DEBUG_VARS(bytesBeforeHash, bytesAfterHash, memSufStart);
-    error = getHashOfSequenceOfBytes(array + memSufStart,
-                                     bytesAfterHash, &secondHalf);
-    IF_ERR_RETURN(error);
-    //LOG_DEBUG_VARS(firstHalf, secondHalf);
-    *arrayHash = firstHalf * secondHalf; // multipilication with overflow
-    //*arrayHash = firstHalf ^ secondHalf;
+    LOG_DEBUG_VARS(array, &array->structHash);
+    GET_HASH_OF_STRUCT(array, structHash, arrayHash);
     LOG_DEBUG_VARS(*arrayHash);
 
-    HASH_DATA_TYPE hashOfData = 0;
+    hash_data_type hashOfData = 0;
     size_t memOfData = array->arraySize * array->elementSize + 2 * SIZE_OF_CANARY;
-    error = getHashOfSequenceOfBytes(array->array, memOfData, &hashOfData);
+    Errors error = getHashOfSequenceOfBytes(array->array, memOfData, &hashOfData);
     IF_ERR_RETURN(error);
     *arrayHash *= hashOfData;
+    LOG_DEBUG_VARS("after : ", *arrayHash);
 
     return STATUS_OK;
 }
@@ -128,6 +125,7 @@ Errors constructSafeArray(size_t arraySize, size_t elementSize, SafeArray* array
     Errors error = initFrontAndBackCanaries();
     IF_ERR_RETURN(error);
 
+// KOLYA: COPYPASTE!!!
 #ifdef IS_CANARY_PROTECTION_ON
     error = myMemCopy(array->frontCanary, FRONT_CANARY, SIZE_OF_CANARY);
     IF_ERR_RETURN(error);
@@ -140,13 +138,6 @@ Errors constructSafeArray(size_t arraySize, size_t elementSize, SafeArray* array
         IF_ERR_RETURN(error);
     }
     array->arraySize = arraySize;
-
-    bufferToOutputStackElems = (char*)calloc(LOG_BUFFER_SIZE, sizeof(char));
-    IF_NOT_COND_RETURN(bufferToOutputStackElems != NULL,
-                       ERROR_MEMORY_ALLOCATION_ERROR);
-    buffForByte = (char*)calloc(4, sizeof(char*));
-    IF_NOT_COND_RETURN(buffForByte != NULL,
-                       ERROR_MEMORY_ALLOCATION_ERROR);
 
 #ifdef IS_HASH_MEMORY_CHECK_DEFINE
     error = recalculateHashOfArray(array);
@@ -170,6 +161,7 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     if (newSize == array->arraySize)
         return STATUS_OK;
 
+    // KOLYA: to recalloc
     size_t newNumOfBytes = newSize * array->elementSize + 2 * SIZE_OF_CANARY;
     void* tmpPtr = realloc(array->array, newNumOfBytes);
     IF_NOT_COND_RETURN(tmpPtr, ERROR_MEMORY_REALLOCATION_ERROR);
@@ -181,15 +173,15 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     // cleaning newly allocated memory
     // ASK: maybe it's better to clear even if we are resizing to a smaller size
 
-    int deltaSize = (int)newSize - (int)oldSize;
-    if (deltaSize < 0)
-        deltaSize = -deltaSize;
+    // KOLYA: ssize_t
+    size_t deltaSize = (newSize < oldSize ? oldSize - newSize : newSize - oldSize); // still cringe?
     size_t deltaBytes = (size_t)deltaSize * array->elementSize;
     memset(array->array + oldSize + SIZE_OF_CANARY, 0, deltaBytes);
 
     Errors error = STATUS_OK;
 #ifdef IS_CANARY_PROTECTION_ON
     error = setCanariesForSafeArray(array);
+    LOG_DEBUG("set canaries fro array -----------------");
     IF_ERR_RETURN(error);
 #endif
 
@@ -214,6 +206,7 @@ Errors setValueToSafeArrayElement(SafeArray* array, size_t elementIndex, const v
                        ERROR_ARRAY_BAD_INDEX);
 
     size_t arrInd = SIZE_OF_CANARY + elementIndex * array->elementSize;
+    // FIXME: arrInd < size
     Errors error = myMemCopy(array->array + arrInd, elementVoidPtr, array->elementSize);
 
 #ifdef IS_HASH_MEMORY_CHECK_DEFINE
@@ -250,12 +243,18 @@ static Errors logArrayElement(const uint8_t* element, size_t elementSize) {
     IF_NOT_COND_RETURN(elementSize < MAX_ARRAY_ELEM_SIZE,
                        ERROR_ARRAY_SIZE_IS_TOO_BIG);
 
+    // FIXME: move to function, make static
+    char bufferToOutputStackElems[LOG_BUFFER_SIZE] = {};
+    char buffForByte[4]                            = {};
     memset(bufferToOutputStackElems, 0, LOG_BUFFER_SIZE);
+    memset(bufferToOutputStackElems, 0, 4);
+
     for (size_t byteInd = 0; byteInd < elementSize; ++byteInd) {
         uint8_t elem = *(element + byteInd);
         // FIXME: output
-        sprintf(buffForByte, "%zx ", (size_t)elem);
-        strcat(bufferToOutputStackElems, buffForByte);
+        // KOLYA: SAFETY!!!
+        snprintf(buffForByte, 4, "%zx ", (size_t)elem); // sNNNNprintf
+        strncat(bufferToOutputStackElems, buffForByte, LOG_BUFFER_SIZE); // strNNNNcat
     }
     LOG_DEBUG(bufferToOutputStackElems);
 
@@ -301,22 +300,22 @@ Errors isSafeArrayValid(const SafeArray* array) {
 #ifdef IS_CANARY_PROTECTION_ON
     // stack smash attack (or just error) from one of the ends of struct
     size_t backCanaryIndex = SIZE_OF_CANARY + array->elementSize * array->arraySize;
-    // TODO: I can simply pass pointer to begining of canary
     int cmpResultFront       = memcmp(array->array,                    FRONT_CANARY, SIZE_OF_CANARY);
     int cmpResultBack        = memcmp(array->array + backCanaryIndex,  BACK_CANARY,  SIZE_OF_CANARY);
 
     int cmpResultFrontStruct = memcmp(array->frontCanary,              FRONT_CANARY, SIZE_OF_CANARY);
     int cmpResultBackStruct  = memcmp(array->backCanary,               BACK_CANARY,  SIZE_OF_CANARY);
-    // LOG_DEBUG_VARS(array->frontCanary[0], FRONT_CANARY);
-    // LOG_DEBUG_VARS(cmpResultFront, cmpResultBack);
-    // LOG_DEBUG_VARS(cmpResultFrontStruct, cmpResultBackStruct);
+    //LOG_DEBUG_VARS(array->frontCanary[5], FRONT_CANARY[5]);
+    LOG_DEBUG_VARS(array->array[5], FRONT_CANARY[5]);
+    LOG_DEBUG_VARS(cmpResultFront, cmpResultBack);
+    LOG_DEBUG_VARS(cmpResultFrontStruct, cmpResultBackStruct);
     IF_NOT_COND_RETURN(cmpResultFront       == 0 && cmpResultBack       == 0 &&
                        cmpResultFrontStruct == 0 && cmpResultBackStruct == 0,
                        ERROR_ARRAY_CANARY_PROTECTION_FAILED);
 #endif
 
 #ifdef IS_HASH_MEMORY_CHECK_DEFINE
-    HASH_DATA_TYPE correctArrayHash = 0;
+    hash_data_type correctArrayHash = 0;
     Errors err = getHashOfArray(array, &correctArrayHash);
     IF_ERR_RETURN(err);
 
@@ -337,9 +336,6 @@ Errors destructSafeArray(SafeArray* array) {
     FREE(array->array);
     array->arraySize   = 0;
     array->elementSize = 0;
-
-    FREE(bufferToOutputStackElems);
-    FREE(buffForByte);
 
     return STATUS_OK;
 }

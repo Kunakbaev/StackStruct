@@ -7,6 +7,7 @@
 #include "memorySafeArray.hpp"
 #include "../include/randomLib.hpp"
 
+// FIXME: canary size divisible by 8
 #define IS_HASH_MEMORY_CHECK_DEFINE
 #define IS_CANARY_PROTECTION_ON
 
@@ -21,13 +22,13 @@
 // };
 
 struct Stack {
-    HASH_DATA_TYPE frontCanary;
+    hash_data_type frontCanary;
 
-    HASH_DATA_TYPE structHash;
+    hash_data_type structHash;
     size_t numberOfElements;
     SafeArray array;
 
-    HASH_DATA_TYPE backCanary;
+    hash_data_type backCanary;
 };
 
 Errors constructStack(Stack* stack, size_t initialCapacity, size_t stackElemSize);

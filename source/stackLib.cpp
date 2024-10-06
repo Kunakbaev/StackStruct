@@ -10,10 +10,10 @@
         IF_ERR_RETURN(errorTmp);                                \
     } while (0)
 
-const HASH_DATA_TYPE BASE_NUMBER_FOR_HASHES        = getRandomUint64tNumber() >> 32; // ???
+const hash_data_type BASE_NUMBER_FOR_HASHES        = getRandomUint64tNumber() >> 32; // ???
 
-const HASH_DATA_TYPE FRONT_CANARY                  = getRandomUint64tNumber();
-const HASH_DATA_TYPE  BACK_CANARY                  = getRandomUint64tNumber();
+const hash_data_type FRONT_CANARY                  = getRandomUint64tNumber();
+const hash_data_type  BACK_CANARY                  = getRandomUint64tNumber();
 
 constexpr const size_t MAX_STACK_ELEM_SIZE   = 32;
 constexpr const size_t MIN_STACK_CAPACITY    = 8;
@@ -27,31 +27,14 @@ static_assert(REALLOC_SIZE_KOEF     > MIN_REALLOC_SIZE_KOEF);
 
 //  -----------------------------       FUNCTIONS FOR HASHES        ----------------------------------
 
-static Errors getHashOfStack(const Stack* stack, HASH_DATA_TYPE* stackHash) {
+// TODO: remove copypaste, write handy function with define in randomLib.cpp
+static Errors getHashOfStack(const Stack* stack, hash_data_type* stackHash) {
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(stackHash);
 
-    // ASK: I have a function that returns hash of sequence of bytes, but
-    // I don't want it to take hash into consideration
-    // I don't want to make stack argument NOT const and another option was to put
-    // structHash field to the end of structure, but OFFSET_OF_FIELD was ver interesting
-    // and also that's a new information for me
     *stackHash = 0;
-
-    size_t bytesBeforeHash = OFFSET_OF_FIELD_I_COPIED_IT_FROM_WIKIPEDIA(Stack, structHash);
-    LOG_DEBUG_VARS(bytesBeforeHash);
-
-    HASH_DATA_TYPE firstHalf  = 0;
-    HASH_DATA_TYPE secondHalf = 0;
-    Errors error = STATUS_OK;
-    error = getHashOfSequenceOfBytes(stack, bytesBeforeHash, &firstHalf);
-    IF_ERR_RETURN(error);
-    error = getHashOfSequenceOfBytes(stack + bytesBeforeHash + sizeof(stack->structHash),
-                                     bytesBeforeHash, &secondHalf);
-    IF_ERR_RETURN(error);
-    LOG_DEBUG_VARS(firstHalf, secondHalf);
-    *stackHash = firstHalf * secondHalf; // multipilication with overflow
-    //*stackHash = firstHalf ^ secondHalf;
+    GET_HASH_OF_STRUCT(stack, structHash, stackHash);
+    LOG_DEBUG_VARS(stackHash);
 
     return STATUS_OK;
 }
@@ -125,21 +108,23 @@ static Errors reallocateStackArrIfNeeded(Stack* stack) {
                        ERROR_STACK_INCORRECT_CAP_KOEF);
 
     // there are too many unused elements in stack
-    // FIXME: rename sq
+
     size_t stackCapacity = stack->array.arraySize;
     size_t newCapacityLess = (size_t)roundl((long double)stackCapacity / squareNumber(REALLOC_SIZE_KOEF));
     // we need more elements, so we will make capacity of stack multiplied by some constant
     size_t newCapacityMore = (size_t)roundl((long double)stackCapacity * REALLOC_SIZE_KOEF);
 
     Errors error = STATUS_OK;
+    size_t newCapacity = 0ul; // KOLYA: fix copypaste
     if (stack->numberOfElements <  newCapacityLess) {
-        error = reallocateMemoryForStackIfNeeded(stack, newCapacityLess);
-        IF_ERR_RETURN(error);
+        newCapacity = newCapacityLess;
     }
     if (stack->numberOfElements == stackCapacity) {
-        error = reallocateMemoryForStackIfNeeded(stack, newCapacityMore);
-        IF_ERR_RETURN(error);
+        newCapacity = newCapacityMore;
     }
+
+    error = reallocateMemoryForStackIfNeeded(stack, newCapacity);
+    IF_ERR_RETURN(error);
 
     error = recalculateHashOfStack(stack);
     IF_ERR_RETURN(error);
@@ -233,7 +218,7 @@ Errors isStackValid(const Stack* stack) {
     IF_ERR_RETURN(error);
 
 #ifdef IS_HASH_MEMORY_CHECK_DEFINE
-    HASH_DATA_TYPE correctHashStack = 0;
+    hash_data_type correctHashStack = 0;
     error = getHashOfStack(stack, &correctHashStack);
     IF_ERR_RETURN(error);
 
@@ -268,8 +253,6 @@ Errors dumpStackLog(const Stack* stack) {
     return STATUS_OK;
 }
 
-
-
 //  -----------------------------       STACK DESTRUCTOR        ----------------------------------
 
 Errors destructStack(Stack* stack) {
@@ -283,6 +266,11 @@ Errors destructStack(Stack* stack) {
 
     stack->numberOfElements = 0;
     stack->structHash       = 0;
+
+    // double a = 0.f;
+    // unsigned long long* a_int = (unsigned long long*)&a;
+    // // KOLYA: RESEARCH: strict aliasing
+
 
     return STATUS_OK;
 }
