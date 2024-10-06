@@ -155,7 +155,6 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     IF_ARG_NULL_RETURN(array);
     IF_NOT_COND_RETURN(newSize < MAX_ARRAY_SIZE,
                        ERROR_ARRAY_NEW_ARRAY_SIZE_IS_TOO_BIG);
-    RETURN_IF_ARR_INVALID(array);
 
     // nothing to do
     if (newSize == array->arraySize)
@@ -174,8 +173,8 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     // ASK: maybe it's better to clear even if we are resizing to a smaller size
 
     // KOLYA: ssize_t
-    size_t deltaSize = (newSize < oldSize ? oldSize - newSize : newSize - oldSize); // still cringe?
-    size_t deltaBytes = (size_t)deltaSize * array->elementSize;
+    size_t deltaSize  = (newSize < oldSize ? oldSize - newSize : newSize - oldSize); // still cringe?
+    size_t deltaBytes = deltaSize * array->elementSize;
     memset(array->array + oldSize + SIZE_OF_CANARY, 0, deltaBytes);
 
     Errors error = STATUS_OK;

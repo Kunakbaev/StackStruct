@@ -110,6 +110,9 @@ Errors testStack() {
 
     int stackPopElem = -1;
     for (int _ = 0; _ < 5; ++_) {
+        //uint8_t* ptr = (uint8_t*)(&stack.array);
+        stack.array.elementSize = 10;
+        stack.array.arraySize = 0;
         popElementToStack(&stack, &stackPopElem);
         LOG_DEBUG_VARS(stackPopElem);
     }

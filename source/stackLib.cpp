@@ -166,7 +166,6 @@ Errors popElementToStack(Stack* stack, void* elementVoidPtr) {
 
     IF_ARG_NULL_RETURN(stack);
     IF_ARG_NULL_RETURN(element);
-    RETURN_IF_INVALID(stack);
 
     Errors error = reallocateStackArrIfNeeded(stack);
     IF_ERR_RETURN(error);
