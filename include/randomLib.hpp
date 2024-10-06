@@ -17,7 +17,7 @@ do {                                                                            
     IF_ARG_NULL_RETURN(structObj);                                                                          \
     size_t sizeOfStruct    = sizeof(*structObj);                                                            \
     size_t sizeOfHash      = sizeof(structObj->hashFieldName);                                              \
-    size_t bytesBeforeHash = (size_t)((uint8_t*)(&structObj->hashFieldName) - (const uint8_t*)structObj);   \
+    size_t bytesBeforeHash = (size_t)((const uint8_t*)(&structObj->hashFieldName) - (const uint8_t*)structObj);   \
     Errors error           = getHashOfStruct(structObj, sizeOfStruct, sizeOfHash, bytesBeforeHash, hash);   \
     IF_ERR_RETURN(error);                                                                                   \
 } while (0);

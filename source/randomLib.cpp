@@ -1,12 +1,13 @@
 #include <random>
 #include <inttypes.h>
+#include <chrono>
 
 #include "../include/randomLib.hpp"
 
 //std::mt19937_64 rnd2(std::chrono::steady_clock::now().time_since_epoch().count());
 // easier for debug with constant seed
 // TODO: return dynamic seed
-std::mt19937_64 rnd(228);
+std::mt19937_64 rnd((size_t)std::chrono::steady_clock::now().time_since_epoch().count());
 
 // WARNING: be carefull here, if hash_data_type is too small, this will be 0
 const hash_data_type BASE_NUMBER_FOR_HASHES = getRandomUint64tNumber() >> 32; // ???
