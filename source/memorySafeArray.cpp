@@ -87,16 +87,16 @@ static Errors getHashOfArray(const SafeArray* array, hash_data_type* arrayHash) 
     // structHash field to the end of structure, but OFFSET_OF_FIELD was ver interesting
     // and also that's a new information for me
     *arrayHash = 0;
-    LOG_DEBUG_VARS(array, &array->structHash);
+    //LOG_DEBUG_VARS(array, &array->structHash);
     GET_HASH_OF_STRUCT(array, structHash, arrayHash);
-    LOG_DEBUG_VARS(*arrayHash);
+    //LOG_DEBUG_VARS(*arrayHash);
 
     hash_data_type hashOfData = 0;
     size_t memOfData = array->arraySize * array->elementSize + 2 * SIZE_OF_CANARY;
     Errors error = getHashOfSequenceOfBytes(array->array, memOfData, &hashOfData);
     IF_ERR_RETURN(error);
     *arrayHash *= hashOfData;
-    LOG_DEBUG_VARS("after : ", *arrayHash);
+    // LOG_DEBUG_VARS("after : ", *arrayHash);
 
     return STATUS_OK;
 }
@@ -305,9 +305,9 @@ Errors isSafeArrayValid(const SafeArray* array) {
     int cmpResultFrontStruct = memcmp(array->frontCanary,              FRONT_CANARY, SIZE_OF_CANARY);
     int cmpResultBackStruct  = memcmp(array->backCanary,               BACK_CANARY,  SIZE_OF_CANARY);
     //LOG_DEBUG_VARS(array->frontCanary[5], FRONT_CANARY[5]);
-    LOG_DEBUG_VARS(array->array[5], FRONT_CANARY[5]);
-    LOG_DEBUG_VARS(cmpResultFront, cmpResultBack);
-    LOG_DEBUG_VARS(cmpResultFrontStruct, cmpResultBackStruct);
+    // LOG_DEBUG_VARS(array->array[5], FRONT_CANARY[5]);
+    // LOG_DEBUG_VARS(cmpResultFront, cmpResultBack);
+    // LOG_DEBUG_VARS(cmpResultFrontStruct, cmpResultBackStruct);
     IF_NOT_COND_RETURN(cmpResultFront       == 0 && cmpResultBack       == 0 &&
                        cmpResultFrontStruct == 0 && cmpResultBackStruct == 0,
                        ERROR_ARRAY_CANARY_PROTECTION_FAILED);

@@ -65,6 +65,19 @@ Errors testStack() {
     Stack stack = {};
     Errors error = STATUS_OK;
 
+    error = constructStack(&stack, 1, sizeof(int));
+
+    LOG_DEBUG_VARS(stack.array.arraySize);
+    // return STATUS_OK;
+    for (int i = 0; i < 20; ++i) {
+        int x = (i + 1) * 10;
+        LOG_DEBUG_VARS(stack.array.arraySize);
+        error = pushElementToStack(&stack, &x);
+        IF_ERR_RETURN(error);
+    }
+
+    return STATUS_OK;
+
     // if stack parametre is void*, then user doesn't know about fields of Stack struct???
     error = constructStack(&stack, 0, 4);
     IF_ERR_RETURN(error);

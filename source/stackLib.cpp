@@ -115,13 +115,20 @@ static Errors reallocateStackArrIfNeeded(Stack* stack) {
     size_t newCapacityMore = (size_t)roundl((long double)stackCapacity * REALLOC_SIZE_KOEF);
 
     Errors error = STATUS_OK;
-    size_t newCapacity = 0ul; // KOLYA: fix copypaste
+
+    // ERROR: was initial value was 0, but in some cases ifs didn't happen so new capacity was 0 and that's mistake
+    size_t newCapacity = stack->array.arraySize; // KOLYA: fix copypaste
     if (stack->numberOfElements <  newCapacityLess) {
         newCapacity = newCapacityLess;
     }
     if (stack->numberOfElements == stackCapacity) {
+        //LOG_WARNING("bruh --------------");
+        //LOG_DEBUG_VARS(stackCapacity, stack->numberOfElements);
         newCapacity = newCapacityMore;
     }
+
+//     LOG_DEBUG_VARS(newCapacity, stack->numberOfElements, stackCapacity);
+//     LOG_DEBUG_VARS(newCapacityLess, newCapacityMore);
 
     error = reallocateMemoryForStackIfNeeded(stack, newCapacity);
     IF_ERR_RETURN(error);
@@ -203,6 +210,8 @@ Errors isStackValid(const Stack* stack) {
 #endif
 
     LOG_DEBUG_VARS(stack->array.arraySize, stack->numberOfElements);
+    LOG_DEBUG_VARS(stack->numberOfElements, stack->array.arraySize);
+
     IF_NOT_COND_RETURN(stack->array.elementSize   <  MAX_STACK_ELEM_SIZE,
                        ERROR_STACK_ARRAY_SIZE_IS_TOO_BIG);
     IF_NOT_COND_RETURN(stack->array.elementSize > 0,
