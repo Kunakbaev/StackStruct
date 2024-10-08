@@ -51,6 +51,8 @@ const char* getErrorMessage(Errors error) {
             return "Error: array size is too big.\n";
         case ERROR_ARRAY_NEW_ARRAY_SIZE_IS_TOO_BIG:
             return "Error: new size for array is too big.\n";
+        case ERROR_ARRAY_ELEMENT_SIZE_IS_TOO_SMALL:
+            return "Error: size of array's element is too small (zero).\n";
 
         default:
             return "Unknown error.\n";

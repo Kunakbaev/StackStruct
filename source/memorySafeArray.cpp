@@ -309,10 +309,14 @@ Errors isSafeArrayValid(const SafeArray* array) {
                        ERROR_ARRAY_SIZE_EMPTY_ARRAY_NOT_ZERO_SIZE);
     IF_NOT_COND_RETURN(array->arraySize <= MAX_ARRAY_SIZE,
                        ERROR_ARRAY_SIZE_IS_TOO_BIG);
+    IF_NOT_COND_RETURN(array->elementSize > 0,
+                       ERROR_ARRAY_ELEMENT_SIZE_IS_TOO_SMALL);
     IF_NOT_COND_RETURN(array->elementSize < MAX_ARRAY_ELEM_SIZE,
                        ERROR_ARRAY_ELEMENT_SIZE_IS_TOO_BIG);
     if (array->array == NULL)
         return STATUS_OK;
+
+    LOG_DEBUG_VARS(array->arraySize, array->elementSize);
 
 #ifdef IS_CANARY_PROTECTION_ON
     // stack smash attack (or just error) from one of the ends of struct

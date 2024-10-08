@@ -61,6 +61,7 @@ enum Errors {
     ERROR_ARRAY_SIZE_IS_TOO_BIG                 = 20,                 // array size is too big
     ERROR_ARRAY_NEW_ARRAY_SIZE_IS_TOO_BIG       = 21,                 // new size for array is too big
     ERROR_ARRAY_ELEMENT_SIZE_IS_TOO_BIG         = 22,                 // size of array's element is too big
+    ERROR_ARRAY_ELEMENT_SIZE_IS_TOO_SMALL       = 23,                 // size of array's element is too small (zero)
 };
 
 const char* getErrorMessage(Errors error);
