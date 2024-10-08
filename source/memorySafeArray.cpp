@@ -96,7 +96,7 @@ static Errors getHashOfArray(const SafeArray* array, hash_data_type* arrayHash) 
     Errors error = getHashOfSequenceOfBytes(array->array, memOfData, &hashOfData);
     IF_ERR_RETURN(error);
     *arrayHash *= hashOfData;
-    // LOG_DEBUG_VARS("after : ", *arrayHash);
+    //LOG_DEBUG_VARS("after : ", *arrayHash);
 
     return STATUS_OK;
 }
@@ -155,27 +155,45 @@ Errors resizeSafeArray(SafeArray* array, size_t newSize) {
     IF_ARG_NULL_RETURN(array);
     IF_NOT_COND_RETURN(newSize < MAX_ARRAY_SIZE,
                        ERROR_ARRAY_NEW_ARRAY_SIZE_IS_TOO_BIG);
+    RETURN_IF_ARR_INVALID(array);
 
     // nothing to do
     if (newSize == array->arraySize)
         return STATUS_OK;
 
     // KOLYA: to recalloc
-    size_t newNumOfBytes = newSize * array->elementSize + 2 * SIZE_OF_CANARY;
-    void* tmpPtr = realloc(array->array, newNumOfBytes);
-    IF_NOT_COND_RETURN(tmpPtr, ERROR_MEMORY_REALLOCATION_ERROR);
-    array->array = (uint8_t*)tmpPtr;
-
     size_t oldSize = array->arraySize;
+    size_t newNumOfBytes = newSize * array->elementSize + 2 * SIZE_OF_CANARY;
+    size_t deltaSize  = (newSize < oldSize ? oldSize - newSize : newSize - oldSize); // still cringe?
+    size_t deltaBytes = deltaSize * array->elementSize;
+
+    LOG_DEBUG_VARS(array->arraySize, newSize);
+    LOG_DEBUG_VARS(newNumOfBytes, array->elementSize);
+
+    if (oldSize > newSize) { // just in case, old memory will be clean (filled with zeros)
+        memset(array->array + newSize * array->elementSize + SIZE_OF_CANARY, 0, deltaBytes);
+    }
+
+    uint8_t* tmpPtr = (uint8_t*)realloc(array->array, newNumOfBytes);
+    LOG_DEBUG("ok");
+    IF_NOT_COND_RETURN(tmpPtr, ERROR_MEMORY_REALLOCATION_ERROR);
+    LOG_DEBUG("ok");
+    array->array = tmpPtr;
+
     array->arraySize = newSize;
 
     // cleaning newly allocated memory
     // ASK: maybe it's better to clear even if we are resizing to a smaller size
 
     // KOLYA: ssize_t
-    size_t deltaSize  = (newSize < oldSize ? oldSize - newSize : newSize - oldSize); // still cringe?
-    size_t deltaBytes = deltaSize * array->elementSize;
-    memset(array->array + oldSize + SIZE_OF_CANARY, 0, deltaBytes);
+    LOG_DEBUG_VARS(newSize, oldSize, deltaSize, deltaBytes);
+    LOG_DEBUG_VARS(newNumOfBytes, array->elementSize);
+    LOG_DEBUG_VARS(oldSize * array->elementSize + SIZE_OF_CANARY);
+
+    // ASK: is this ok?
+    if (oldSize < newSize) {
+        memset(array->array + oldSize * array->elementSize + SIZE_OF_CANARY, 0, deltaBytes);
+    }
 
     Errors error = STATUS_OK;
 #ifdef IS_CANARY_PROTECTION_ON
