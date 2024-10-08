@@ -66,32 +66,35 @@ Errors testStack() {
     Errors error = STATUS_OK;
 
     // if stack parametre is void*, then user doesn't know about fields of Stack struct???
-    error = constructStack(&stack, 0, 4);
+    error = constructStack(&stack, 15, 4);
     IF_ERR_RETURN(error);
-    LOG_DEBUG("main");
+    //LOG_DEBUG("main");
 
     // uint8_t* ptr = (uint8_t*)stack.array.array;
     // *(ptr) = 190;
     //*(ptr + 1) = 102;
 
-    LOG_DEBUG("be");
-    dumpStackLog(&stack);
-    LOG_DEBUG("ok");
+    // LOG_DEBUG("be");
+    // dumpStackLog(&stack);
+    // //LOG_DEBUG("ok");
 
-    for (int i = 0; i < 5; ++i) {
-        LOG_DEBUG("biba");
+    for (int i = 0; i < 9; ++i) {
+        //LOG_DEBUG("biba");
         //dumpStackLog(&stack);
         int number = (i + 1) * 10;
         // FIXME: if & is not added, error occurs
         error = pushElementToStack(&stack, (const void*)&number);
-        LOG_DEBUG_VARS(i, number, error);
+        //LOG_DEBUG_VARS(i, number, error);
         IF_ERR_RETURN(error);
 
         // stack.numberOfElements = 0;
         // stack.stackCapacity = 0;
         // stack.array = NULL;
-        dumpStackLog(&stack);
+        //dumpStackLog(&stack);
+        LOG_DEBUG_VARS(stack.array.arraySize, stack.numberOfElements);
         uint8_t* ptr = (uint8_t*)stack.array.array;
+
+        dumpStackLog(&stack);
         //*ptr = 19290;
         //*(ptr + 5) = 102;
     }
@@ -101,7 +104,7 @@ Errors testStack() {
     // *(ptr + 3) = 102;
 
     LOG_DEBUG("------------ popping elements --------------");
-    // return 0;
+    // return STATUS_OK;
     // stack.numberOfElements = 3;
     // stack.array[1] = 2;
 
@@ -112,6 +115,9 @@ Errors testStack() {
     for (int _ = 0; _ < 5; ++_) {
         popElementToStack(&stack, &stackPopElem);
         LOG_DEBUG_VARS(stackPopElem);
+        printf("elem : %d\n", stackPopElem);
+
+        //dumpStackLog(&stack);
     }
 
     error = dumpStackLog(&stack);

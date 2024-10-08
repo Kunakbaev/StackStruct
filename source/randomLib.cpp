@@ -76,7 +76,7 @@ Errors getHashOfStruct(const void* structObjVoidPtr, size_t sizeOfStruct, size_t
     // and also that's a new information for me
     *hash = 0;
 
-    LOG_DEBUG_VARS(sizeOfHash, sizeOfStruct, bytesBeforeHash, hash);
+    //LOG_DEBUG_VARS(sizeOfHash, sizeOfStruct, bytesBeforeHash, hash);
 
     hash_data_type firstHalf  = 0;
     hash_data_type secondHalf = 0;
@@ -86,7 +86,7 @@ Errors getHashOfStruct(const void* structObjVoidPtr, size_t sizeOfStruct, size_t
     error = getHashOfSequenceOfBytes(structObj + bytesBeforeHash + sizeOfHash,
                                      sizeOfStruct - bytesBeforeHash - sizeOfHash, &secondHalf);
     IF_ERR_RETURN(error);
-    LOG_DEBUG_VARS(firstHalf, secondHalf);
+    //LOG_DEBUG_VARS(firstHalf, secondHalf);
     *hash = firstHalf * secondHalf; // multipilication with overflow
     //*stackHash = firstHalf ^ secondHalf;
 

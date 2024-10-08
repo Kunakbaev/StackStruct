@@ -34,7 +34,7 @@ static Errors getHashOfStack(const Stack* stack, hash_data_type* stackHash) {
 
     *stackHash = 0;
     GET_HASH_OF_STRUCT(stack, structHash, stackHash);
-    LOG_DEBUG_VARS(stackHash);
+    //LOG_DEBUG_VARS(stackHash);
 
     return STATUS_OK;
 }
