@@ -32,8 +32,11 @@ $(BUILD_DIR)/%.o: $(SOURCE_DIR)/%.cpp $(BUILD_DIR)
 run: $(LIB_RUN_NAME)
 	$(BUILD_DIR)/$(LIB_RUN_NAME)
 
+
+HELP_MESSAGE := installing stack structure \(just creating static library for it\)
+
 install: $(LIB_RUN_NAME)
-	@echo installing stack structure (just creating static library for it)
+	@echo installing stack structure $(HELP_MESSAGE)
 	@ar rcs stackLib.a $(OBJ)
 
 # -------------------------   HELPER TARGETS   ---------------------------
