@@ -18,11 +18,11 @@ int main() {
     setLoggingLevel(DEBUG);
 
     Errors error = STATUS_OK;
-    // error = testSafeArray();
-    // IF_ERR_RETURN(error);
-
-    error = testStack();
+    error = testSafeArray();
     IF_ERR_RETURN(error);
+
+    // error = testStack();
+    // IF_ERR_RETURN(error);
 
     return 0;
 }
@@ -43,10 +43,15 @@ Errors testSafeArray() {
     // *(ptr + 6) = 1832;
     LOG_DEBUG("--------------------------------------");
 
+    resizeSafeArray(&array, 3);
+
     int num = 10;
-    error = setValueToSafeArrayElement(&array, 0, &num);
+    error = setValueToSafeArrayElement(&array, 2, &num);
     IF_ERR_RETURN(error);
     LOG_DEBUG_VARS("bruh");
+
+    resizeSafeArray(&array, 1);
+    resizeSafeArray(&array, 0);
 
     error = dumpArrayLog(&array);
     IF_ERR_RETURN(error);
@@ -66,7 +71,7 @@ Errors testStack() {
     Errors error = STATUS_OK;
 
     // if stack parametre is void*, then user doesn't know about fields of Stack struct???
-    error = constructStack(&stack, 15, 4);
+    error = constructStack(&stack, 1, 8);
     IF_ERR_RETURN(error);
     //LOG_DEBUG("main");
 
@@ -83,7 +88,7 @@ Errors testStack() {
         //dumpStackLog(&stack);
         int number = (i + 1) * 10;
         // FIXME: if & is not added, error occurs
-        error = pushElementToStack(&stack, (const void*)&number);
+        error = pushElementToStack(&stack, &number);
         //LOG_DEBUG_VARS(i, number, error);
         IF_ERR_RETURN(error);
 
@@ -111,11 +116,13 @@ Errors testStack() {
     // error = dumpStackLog(&stack);
     // IF_ERR_RETURN(error);
 
-    int stackPopElem = -1;
-    for (int _ = 0; _ < 5; ++_) {
-        popElementToStack(&stack, &stackPopElem);
+    size_t stackPopElem = -1;
+    for (int i = 0; i < 5; ++i) {
+        error = popElementToStack(&stack, &stackPopElem);
+        IF_ERR_RETURN(error);
         LOG_DEBUG_VARS(stackPopElem);
-        printf("elem : %d\n", stackPopElem);
+        //printf("i : %d\n", i);
+        LOG_INFO("stackPopElement: %zu, i : %d", stackPopElem, i);
 
         //dumpStackLog(&stack);
     }
