@@ -35,6 +35,11 @@ static Errors initFrontAndBackCanaries() {
 //         return FRONT_CANARY;
 //     }
 
+    static bool wasAlreadyInitialized = false;
+    if (wasAlreadyInitialized)
+        return STATUS_OK;
+    wasAlreadyInitialized = true;
+
     Errors error = STATUS_OK;
     error = fillSequenceOfBytesWithRandomValues(FRONT_CANARY, SIZE_OF_CANARY);
     IF_ERR_RETURN(error);
